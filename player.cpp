@@ -1,0 +1,192 @@
+// ============================================================================
+// Player.cpp - Player Character Implementation
+// ============================================================================
+
+#include "player.h"
+
+#define PI 3.14159265359f
+
+Player::Player(float startX, float startY, float startZ) {
+  x = initialX = startX;
+  y = initialY = startY;
+  z = initialZ = startZ;
+  yaw = 0.0f;
+
+  moveSpeed = 5.0f;
+  turnSpeed = 180.0f;
+
+  jumpSpeed = 6.0f;
+  velocityY = 0.0f;
+  gravity = -20.0f;
+  isJumping = false;
+  isGrounded = true;
+
+  radius = 0.5f;
+  height = 2.0f;
+
+  health = 100;
+  maxHealth = 100;
+  orbsCollected = 0;
+
+  bobPhase = 0.0f;
+  bobAmount = 0.1f;
+
+  damageCooldown = 0.0f;
+}
+
+Player::~Player() {
+  // Nothing to clean up
+}
+
+void Player::update(float deltaTime) {
+  // Apply gravity
+  if (!isGrounded || isJumping) {
+    velocityY += gravity * deltaTime;
+    y += velocityY * deltaTime;
+
+    // Ground check
+    if (y <= 1.0f) {
+      y = 1.0f;
+      velocityY = 0.0f;
+      isJumping = false;
+      isGrounded = true;
+    } else {
+      isGrounded = false;
+    }
+  }
+
+  // Update damage cooldown
+  if (damageCooldown > 0.0f) {
+    damageCooldown -= deltaTime;
+  }
+}
+
+void Player::move(float forward, float strafe, float deltaTime) {
+  if (forward == 0.0f && strafe == 0.0f)
+    return;
+
+  // Calculate movement direction
+  float yawRad = yaw * PI / 180.0f;
+
+  float moveX = forward * sin(yawRad) + strafe * cos(yawRad);
+  float moveZ = forward * cos(yawRad) - strafe * sin(yawRad);
+
+  // Normalize diagonal movement
+  float length = sqrt(moveX * moveX + moveZ * moveZ);
+  if (length > 0.0f) {
+    moveX /= length;
+    moveZ /= length;
+  }
+
+  // Apply movement
+  x += moveX * moveSpeed * deltaTime;
+  z += moveZ * moveSpeed * deltaTime;
+
+  // Update bobbing animation when moving
+  bobPhase += deltaTime * 10.0f;
+}
+
+void Player::jump() {
+  if (isGrounded && !isJumping) {
+    velocityY = jumpSpeed;
+    isJumping = true;
+    isGrounded = false;
+  }
+}
+
+void Player::takeDamage(int amount) {
+  if (damageCooldown <= 0.0f) {
+    health -= amount;
+    if (health < 0)
+      health = 0;
+    damageCooldown = 1.0f; // 1 second invincibility
+  }
+}
+
+void Player::collectOrb() { orbsCollected++; }
+
+void Player::reset() {
+  x = initialX;
+  y = initialY;
+  z = initialZ;
+  yaw = 0.0f;
+  velocityY = 0.0f;
+  isJumping = false;
+  isGrounded = true;
+  health = maxHealth;
+  orbsCollected = 0;
+  damageCooldown = 0.0f;
+}
+
+void Player::resetPosition(float newX, float newY, float newZ) {
+  x = initialX = newX;
+  y = initialY = newY;
+  z = initialZ = newZ;
+  velocityY = 0.0f;
+  isJumping = false;
+  isGrounded = true;
+  orbsCollected = 0;
+}
+
+bool Player::checkCollision(float objX, float objZ, float objRadius) {
+  float dx = x - objX;
+  float dz = z - objZ;
+  float distance = sqrt(dx * dx + dz * dz);
+  return distance < (radius + objRadius);
+}
+
+void Player::resolveCollision(float objX, float objZ, float objRadius) {
+  float dx = x - objX;
+  float dz = z - objZ;
+  float distance = sqrt(dx * dx + dz * dz);
+
+  if (distance < (radius + objRadius) && distance > 0.0f) {
+    // Push player away
+    float overlap = (radius + objRadius) - distance;
+    float pushX = (dx / distance) * overlap;
+    float pushZ = (dz / distance) * overlap;
+
+    x += pushX;
+    z += pushZ;
+  }
+}
+
+void Player::setPosition(float newX, float newY, float newZ) {
+  x = newX;
+  y = newY;
+  z = newZ;
+}
+
+void Player::render() {
+  glPushMatrix();
+
+  // Apply bobbing when moving
+  float bobOffset = sin(bobPhase) * bobAmount;
+  glTranslatef(x, y + bobOffset, z);
+  glRotatef(-yaw, 0, 1, 0);
+
+  // Draw player as a simple capsule (cylinder + sphere)
+  if (damageCooldown > 0.0f && (int)(damageCooldown * 10) % 2 == 0) {
+    glColor3f(1.0f, 0.3f, 0.3f); // Flash red when damaged
+  } else {
+    glColor3f(0.8f, 0.6f, 0.4f); // Treasure hunter brown
+  }
+
+  // Body (cylinder)
+  GLUquadric *quad = gluNewQuadric();
+  glRotatef(-90, 1, 0, 0);
+  gluCylinder(quad, radius * 0.7f, radius * 0.7f, height * 0.6f, 16, 1);
+
+  // Head (sphere)
+  glTranslatef(0, 0, height * 0.6f);
+  glutSolidSphere(radius * 0.5f, 16, 16);
+
+  // Backpack (small cube)
+  glColor3f(0.4f, 0.3f, 0.2f);
+  glTranslatef(0, -radius * 0.4f, 0);
+  glScalef(0.5f, 0.6f, 0.3f);
+  glutSolidCube(1.0f);
+
+  gluDeleteQuadric(quad);
+  glPopMatrix();
+}
