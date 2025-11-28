@@ -30,18 +30,50 @@ Level::~Level() {
     delete t;
   for (auto o : obstacles)
     delete o;
+
+  if (pillarModel)
+    delete pillarModel;
+  if (treeModel)
+    delete treeModel;
+  if (rockModel)
+    delete rockModel;
+}
+
+void Level::loadCommonAssets() {
+  // Initialize models
+  pillarModel = new Model();
+  treeModel = new Model();
+  rockModel = new Model();
+  groundModel = new Model(); // Initialize groundModel
+
+  // Try to load models, otherwise they will remain empty and render fallback
+  pillarModel->load("assets/pillar.obj");
+  treeModel->load("assets/tree.obj"); // Keep treeModel load
+  if (!rockModel->load("assets/rock.obj")) {
+    printf("Failed to load rock model\n");
+  }
+  if (!groundModel->load("assets/ground.obj")) {
+    printf("Failed to load ground model\n");
+  }
+
+  // Load textures
+  wallTexture = loadBMP("assets/wall.bmp");
+  groundTexture = loadBMP("assets/ground.bmp");
 }
 
 void Level::renderGround(float size, float r, float g, float b) {
-  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D); // Disable textures for solid color
+  glEnable(GL_LIGHTING);
   glColor3f(r, g, b);
+
+  // Always use simple quad (no model) for smooth ground
   glBegin(GL_QUADS);
+  glNormal3f(0, 1, 0);
   glVertex3f(-size, 0, -size);
   glVertex3f(size, 0, -size);
   glVertex3f(size, 0, size);
   glVertex3f(-size, 0, size);
   glEnd();
-  glEnable(GL_LIGHTING);
 }
 
 void Level::renderSkybox(float r, float g, float b) {
@@ -86,6 +118,13 @@ void Level::renderSkybox(float r, float g, float b) {
 
 void Level::renderWalls(float size, float height) {
   glEnable(GL_LIGHTING);
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, wallTexture.id);
+
+  if (wallTexture.id == 0) {
+    glDisable(GL_TEXTURE_2D);
+  }
+
   glColor3f(0.6f, 0.5f, 0.4f);
 
   float thickness = 1.0f;
@@ -152,6 +191,8 @@ void DesertLevel::init(Player *p) {
 
   // Create portal
   portal = new Portal(0, 1, -40);
+
+  loadCommonAssets();
 }
 
 void DesertLevel::spawnOrbs() {
@@ -207,6 +248,28 @@ void DesertLevel::spawnObstacles() {
   obstacles.push_back(new Obstacle(30, 0, 10, 1.5f, 8, 1.5f, TREE));
   obstacles.push_back(new Obstacle(-25, 0, -15, 1.5f, 8, 1.5f, TREE));
 
+  // Rocks (Armadillo) - Increased size for collision to match 3x visual scale
+  obstacles.push_back(new Obstacle(5, 0, -20, 5, 5, 5, ROCK));
+  obstacles.push_back(new Obstacle(-20, 0, 5, 5, 5, 5, ROCK));
+
+  // Add walls as obstacles for collision
+  float wallSize = 45.0f;
+  float wallThickness = 2.0f;
+  float wallHeight = 8.0f;
+
+  // North wall (z = -wallSize)
+  obstacles.push_back(new Obstacle(0, 0, -wallSize, wallSize * 2, wallHeight,
+                                   wallThickness, WALL));
+  // South wall (z = +wallSize)
+  obstacles.push_back(new Obstacle(0, 0, wallSize, wallSize * 2, wallHeight,
+                                   wallThickness, WALL));
+  // West wall (x = -wallSize)
+  obstacles.push_back(new Obstacle(-wallSize, 0, 0, wallThickness, wallHeight,
+                                   wallSize * 2, WALL));
+  // East wall (x = +wallSize)
+  obstacles.push_back(new Obstacle(wallSize, 0, 0, wallThickness, wallHeight,
+                                   wallSize * 2, WALL));
+
   // Spike traps
   traps.push_back(new Trap(0, 0.1f, 10, SPIKE_TRAP));
   traps.push_back(new Trap(18, 0.1f, -12, SPIKE_TRAP));
@@ -227,9 +290,19 @@ void DesertLevel::update(float deltaTime) {
 
   // Check obstacle collisions
   for (auto obs : obstacles) {
-    float obsRadius = obs->width / 2.0f;
-    if (player->checkCollision(obs->x, obs->z, obsRadius)) {
-      player->resolveCollision(obs->x, obs->z, obsRadius);
+    if (obs->type == WALL || obs->type == PILLAR || obs->type == ICE_PILLAR ||
+        obs->type == ROCK) {
+      // Use Box collision for walls, pillars, and rocks
+      if (player->checkCollisionWithBox(obs->x, obs->z, obs->width,
+                                        obs->depth)) {
+        player->resolveCollisionWithBox(obs->x, obs->z, obs->width, obs->depth);
+      }
+    } else {
+      // Use Cylinder/Sphere collision for trees/others
+      float obsRadius = obs->width / 2.0f;
+      if (player->checkCollision(obs->x, obs->z, obsRadius)) {
+        player->resolveCollision(obs->x, obs->z, obsRadius);
+      }
     }
   }
 
@@ -243,6 +316,33 @@ void DesertLevel::update(float deltaTime) {
     if (player->checkCollision(portal->x, portal->z, portal->radius)) {
       levelComplete = true;
     }
+  }
+
+  // Map Boundaries (Simple box constraint)
+  float mapSize = 48.0f; // Slightly less than 50 to keep inside walls
+  float px = player->getX();
+  float pz = player->getZ();
+  bool clamped = false;
+
+  if (px > mapSize) {
+    px = mapSize;
+    clamped = true;
+  }
+  if (px < -mapSize) {
+    px = -mapSize;
+    clamped = true;
+  }
+  if (pz > mapSize) {
+    pz = mapSize;
+    clamped = true;
+  }
+  if (pz < -mapSize) {
+    pz = -mapSize;
+    clamped = true;
+  }
+
+  if (clamped) {
+    player->setPosition(px, player->getY(), pz);
   }
 }
 
@@ -264,6 +364,7 @@ void DesertLevel::checkOrbCollection() {
         player->checkCollision(orb->x, orb->z, orb->radius)) {
       orb->collected = true;
       player->collectOrb();
+      playSound(SOUND_COLLECT_ORB);
     }
   }
 }
@@ -360,6 +461,8 @@ void DesertLevel::render() {
       renderPillar(obs->x, obs->y, obs->z);
     else if (obs->type == TREE)
       renderPalmTree(obs->x, obs->y, obs->z);
+    else if (obs->type == ROCK)
+      renderRock(obs->x, obs->y, obs->z);
   }
 
   // Render spike traps
@@ -390,6 +493,7 @@ void DesertLevel::render() {
 }
 
 void DesertLevel::renderDesertEnvironment() {
+  // Sand color (tan/beige)
   renderGround(50, 0.76f, 0.70f, 0.50f);
 
   float skyR = 0.53f + 0.2f * sin(timeOfDay);
@@ -403,13 +507,22 @@ void DesertLevel::renderDesertEnvironment() {
 void DesertLevel::renderPillar(float x, float y, float z) {
   glColor3f(0.7f, 0.6f, 0.5f);
   glPushMatrix();
-  glTranslatef(x, y + 3, z);
-  glScalef(1, 3, 1);
-  glutSolidCube(2.0f);
+  glTranslatef(x, y, z);
 
-  glTranslatef(0, 1.1f, 0);
-  glScalef(1.3f, 0.3f, 1.3f);
-  glutSolidCube(2.0f);
+  // Use loaded model if available
+  if (pillarModel && pillarModel->getWidth() > 0) {
+    glScalef(2.0f, 2.0f, 2.0f); // Adjust scale as needed
+    pillarModel->render();
+  } else {
+    // Fallback rendering
+    glTranslatef(0, 3, 0);
+    glScalef(1, 3, 1);
+    glutSolidCube(2.0f);
+
+    glTranslatef(0, 1.1f, 0);
+    glScalef(1.3f, 0.3f, 1.3f);
+    glutSolidCube(2.0f);
+  }
   glPopMatrix();
 }
 
@@ -417,24 +530,43 @@ void DesertLevel::renderPalmTree(float x, float y, float z) {
   glPushMatrix();
   glTranslatef(x, y, z);
 
-  glColor3f(0.55f, 0.35f, 0.2f);
-  GLUquadric *quad = gluNewQuadric();
-  glRotatef(-90, 1, 0, 0);
-  gluCylinder(quad, 0.5f, 0.3f, 6, 12, 1);
+  if (treeModel && treeModel->getWidth() > 0) {
+    glScalef(1.5f, 1.5f, 1.5f);
+    treeModel->render();
+  } else {
+    glColor3f(0.55f, 0.35f, 0.2f);
+    GLUquadric *quad = gluNewQuadric();
+    glRotatef(-90, 1, 0, 0);
+    gluCylinder(quad, 0.5f, 0.3f, 6, 12, 1);
 
-  glColor3f(0.2f, 0.6f, 0.2f);
-  for (int i = 0; i < 6; i++) {
-    glPushMatrix();
-    float angle = i * 60.0f;
-    glRotatef(angle, 0, 0, 1);
-    glTranslatef(0, 0, 6.5f);
-    glRotatef(30, 1, 0, 0);
-    glScalef(0.5f, 0.5f, 2.0f);
-    glutSolidSphere(1.0f, 8, 8);
-    glPopMatrix();
+    glColor3f(0.2f, 0.6f, 0.2f);
+    for (int i = 0; i < 6; i++) {
+      glPushMatrix();
+      float angle = i * 60.0f;
+      glRotatef(angle, 0, 0, 1);
+      glTranslatef(0, 0, 6.5f);
+      glRotatef(30, 1, 0, 0);
+      glScalef(0.5f, 0.5f, 2.0f);
+      glutSolidSphere(1.0f, 8, 8);
+      glPopMatrix();
+    }
+    gluDeleteQuadric(quad);
   }
+  glPopMatrix();
+}
 
-  gluDeleteQuadric(quad);
+void DesertLevel::renderRock(float x, float y, float z) {
+  glPushMatrix();
+  glTranslatef(x, y, z);
+
+  if (rockModel && rockModel->getWidth() > 0) {
+    // Armadillo is usually unit size or small, let's scale it up
+    glScalef(3.0f, 3.0f, 3.0f);
+    rockModel->render();
+  } else {
+    glColor3f(0.5f, 0.5f, 0.5f);
+    glutSolidSphere(1.0f, 8, 8);
+  }
   glPopMatrix();
 }
 
@@ -545,6 +677,8 @@ void IceLevel::init(Player *p) {
   spawnObstacles();
 
   portal = new Portal(0, 1, -35);
+
+  loadCommonAssets();
 }
 
 void IceLevel::spawnEnemies() {
@@ -727,7 +861,8 @@ void IceLevel::render() {
 }
 
 void IceLevel::renderIceEnvironment() {
-  renderGround(50, 0.7f, 0.85f, 0.95f);
+  // Sand color (same as desert)
+  renderGround(50, 0.76f, 0.70f, 0.50f);
   renderSkybox(0.4f, 0.5f, 0.7f);
 
   glColor3f(0.6f, 0.7f, 0.8f);

@@ -69,7 +69,7 @@ struct LightSource {
 
 enum TrapType { SPIKE_TRAP, FALLING_ICICLE };
 
-enum ObstacleType { PILLAR, TREE, ICE_PILLAR, WALL };
+enum ObstacleType { PILLAR, TREE, ICE_PILLAR, WALL, ROCK };
 
 // ============================================================================
 // COLLISION HELPERS
@@ -162,11 +162,58 @@ struct Texture {
   Texture() : id(0), width(0), height(0) {}
 };
 
-// Simple BMP loader (you can implement this if you want textures)
+// Simple BMP loader
 inline Texture loadBMP(const char *filename) {
   Texture tex;
-  // TODO: Implement BMP loading using fopen, fread
-  // For now, return empty texture
+  FILE *file = fopen(filename, "rb");
+  if (!file) {
+    printf("Image could not be opened: %s\n", filename);
+    return tex;
+  }
+
+  unsigned char header[54];
+  if (fread(header, 1, 54, file) != 54) {
+    printf("Not a correct BMP file: %s\n", filename);
+    fclose(file);
+    return tex;
+  }
+
+  if (header[0] != 'B' || header[1] != 'M') {
+    printf("Not a correct BMP file: %s\n", filename);
+    fclose(file);
+    return tex;
+  }
+
+  unsigned int dataPos = *(int *)&(header[0x0A]);
+  unsigned int imageSize = *(int *)&(header[0x22]);
+  unsigned int width = *(int *)&(header[0x12]);
+  unsigned int height = *(int *)&(header[0x16]);
+
+  if (imageSize == 0)
+    imageSize = width * height * 3;
+  if (dataPos == 0)
+    dataPos = 54;
+
+  unsigned char *data = new unsigned char[imageSize];
+  fread(data, 1, imageSize, file);
+  fclose(file);
+
+  glGenTextures(1, &tex.id);
+  glBindTexture(GL_TEXTURE_2D, tex.id);
+
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_BGR,
+               GL_UNSIGNED_BYTE, data);
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  tex.width = width;
+  tex.height = height;
+
+  delete[] data;
+  printf("Loaded texture: %s\n", filename);
   return tex;
 }
 
@@ -176,6 +223,7 @@ inline Texture loadBMP(const char *filename) {
 
 inline void drawGrid(float size, float step, float y = 0.0f) {
   glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
   glColor3f(0.3f, 0.3f, 0.3f);
   glBegin(GL_LINES);
   for (float i = -size; i <= size; i += step) {
@@ -187,11 +235,13 @@ inline void drawGrid(float size, float step, float y = 0.0f) {
     glVertex3f(i, y, size);
   }
   glEnd();
+  glEnable(GL_TEXTURE_2D);
   glEnable(GL_LIGHTING);
 }
 
 inline void drawAxis(float length = 5.0f) {
   glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
   glLineWidth(3.0f);
   glBegin(GL_LINES);
   // X axis - Red
@@ -210,12 +260,14 @@ inline void drawAxis(float length = 5.0f) {
   glVertex3f(0, 0, length);
   glEnd();
   glLineWidth(1.0f);
+  glEnable(GL_TEXTURE_2D);
   glEnable(GL_LIGHTING);
 }
 
 inline void drawBoundingBox(float x, float y, float z, float w, float h,
                             float d) {
   glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
   glColor3f(1.0f, 0.0f, 0.0f);
   glLineWidth(2.0f);
 
@@ -229,16 +281,19 @@ inline void drawBoundingBox(float x, float y, float z, float w, float h,
   glPopMatrix();
 
   glLineWidth(1.0f);
+  glEnable(GL_TEXTURE_2D);
   glEnable(GL_LIGHTING);
 }
 
 inline void drawBoundingSphere(float x, float y, float z, float radius) {
   glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
   glColor3f(0.0f, 1.0f, 0.0f);
   glPushMatrix();
   glTranslatef(x, y, z);
   glutWireSphere(radius, 16, 16);
   glPopMatrix();
+  glEnable(GL_TEXTURE_2D);
   glEnable(GL_LIGHTING);
 }
 
@@ -271,7 +326,7 @@ struct Particle {
 };
 
 // ============================================================================
-// SOUND EFFECTS (Placeholder - implement with irrKlang or OpenAL)
+// SOUND EFFECTS
 // ============================================================================
 
 enum SoundEffect {
@@ -288,8 +343,49 @@ enum SoundEffect {
 };
 
 inline void playSound(SoundEffect sound) {
-  // TODO: Implement with audio library
-  // For now, this is a placeholder
+#ifdef __APPLE__
+  // Simple macOS sound player using system command
+  // In a real engine, use OpenAL or irrKlang
+  const char *soundFile = "";
+
+  switch (sound) {
+  case SOUND_COLLECT_ORB:
+    soundFile = "assets/collect.wav";
+    break;
+  case SOUND_CHEST_OPEN:
+    soundFile = "assets/chest.wav";
+    break;
+  case SOUND_ICICLE_CRACK:
+    soundFile = "assets/crack.wav";
+    break;
+  case SOUND_ICICLE_FALL:
+    soundFile = "assets/fall.wav";
+    break;
+  case SOUND_DAMAGE:
+    soundFile = "assets/damage.wav";
+    break;
+  case SOUND_FOOTSTEP:
+    return; // Too frequent for system()
+  case SOUND_JUMP:
+    soundFile = "assets/jump.wav";
+    break;
+  case SOUND_PORTAL_ACTIVATE:
+    soundFile = "assets/portal.wav";
+    break;
+  case SOUND_VICTORY:
+    soundFile = "assets/win.wav";
+    break;
+  case SOUND_ENEMY_GROWL:
+    soundFile = "assets/growl.wav";
+    break;
+  }
+
+  if (soundFile[0] != '\0') {
+    char command[256];
+    sprintf(command, "afplay %s &", soundFile);
+    system(command);
+  }
+#endif
 }
 
 // ============================================================================

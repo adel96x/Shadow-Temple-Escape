@@ -11,10 +11,12 @@
 #else
 #include <GL/glut.h>
 #endif
+#include "model.h"
 #include <cmath>
 
 class Player {
 private:
+  Model *playerModel;
   // Position and orientation
   float x, y, z;
   float yaw;
@@ -53,6 +55,8 @@ public:
   Player(float startX, float startY, float startZ);
   ~Player();
 
+  void loadModel(const char *filename);
+
   void update(float deltaTime);
   void render();
   void move(float forward, float strafe, float deltaTime);
@@ -65,6 +69,10 @@ public:
   // Collision helpers
   bool checkCollision(float objX, float objZ, float objRadius);
   void resolveCollision(float objX, float objZ, float objRadius);
+
+  bool checkCollisionWithBox(float boxX, float boxZ, float width, float depth);
+  void resolveCollisionWithBox(float boxX, float boxZ, float width,
+                               float depth);
 
   // Getters
   float getX() const { return x; }

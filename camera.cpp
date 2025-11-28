@@ -37,8 +37,8 @@ void Camera::update(float playerX, float playerY, float playerZ,
 
     // Calculate desired camera position behind player
     float yawRad = currentYaw * PI / 180.0f;
-    float desiredX = playerX - distanceBehind * sin(yawRad);
-    float desiredZ = playerZ - distanceBehind * cos(yawRad);
+    float desiredX = playerX + distanceBehind * sin(yawRad);
+    float desiredZ = playerZ + distanceBehind * cos(yawRad);
     float desiredY = playerY + heightAbove;
 
     // Smooth interpolation to desired position

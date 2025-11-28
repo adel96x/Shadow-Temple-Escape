@@ -3,6 +3,20 @@
 // ============================================================================
 
 #include "player.h"
+#include "utils.h"
+#include <algorithm> // For std::max, std::min if needed
+
+// Helper if utils.h clamp is not found
+#ifndef CLAMP_DEFINED
+#define CLAMP_DEFINED
+inline float clamp_local(float value, float min, float max) {
+  if (value < min)
+    return min;
+  if (value > max)
+    return max;
+  return value;
+}
+#endif
 
 #define PI 3.14159265359f
 
@@ -32,10 +46,20 @@ Player::Player(float startX, float startY, float startZ) {
   bobAmount = 0.1f;
 
   damageCooldown = 0.0f;
+
+  playerModel = new Model();
+  // Try to load, will fail silently if file missing
+  playerModel->load("assets/player.obj");
 }
 
 Player::~Player() {
-  // Nothing to clean up
+  if (playerModel)
+    delete playerModel;
+}
+
+void Player::loadModel(const char *filename) {
+  if (playerModel)
+    playerModel->load(filename);
 }
 
 void Player::update(float deltaTime) {
@@ -68,8 +92,16 @@ void Player::move(float forward, float strafe, float deltaTime) {
   // Calculate movement direction
   float yawRad = yaw * PI / 180.0f;
 
-  float moveX = forward * sin(yawRad) + strafe * cos(yawRad);
-  float moveZ = forward * cos(yawRad) - strafe * sin(yawRad);
+  // Fix inverted controls:
+  // Forward should be -Z (standard OpenGL)
+  // Right should be +X
+  // Yaw 0 -> Facing -Z
+
+  // Forward Vector: (-sin(yaw), 0, -cos(yaw))
+  // Right Vector: (cos(yaw), 0, -sin(yaw))
+
+  float moveX = forward * -sin(yawRad) + strafe * cos(yawRad);
+  float moveZ = forward * -cos(yawRad) + strafe * -sin(yawRad);
 
   // Normalize diagonal movement
   float length = sqrt(moveX * moveX + moveZ * moveZ);
@@ -91,12 +123,14 @@ void Player::jump() {
     velocityY = jumpSpeed;
     isJumping = true;
     isGrounded = false;
+    playSound(SOUND_JUMP); // Play jump sound
   }
 }
 
 void Player::takeDamage(int amount) {
   if (damageCooldown <= 0.0f) {
     health -= amount;
+    playSound(SOUND_DAMAGE); // Play damage sound
     if (health < 0)
       health = 0;
     damageCooldown = 1.0f; // 1 second invincibility
@@ -135,6 +169,44 @@ bool Player::checkCollision(float objX, float objZ, float objRadius) {
   return distance < (radius + objRadius);
 }
 
+bool Player::checkCollisionWithBox(float boxX, float boxZ, float width,
+                                   float depth) {
+  // Simple AABB vs Circle collision
+  // Find the closest point on the box to the circle
+  float closestX = clamp_local(x, boxX - width / 2, boxX + width / 2);
+  float closestZ = clamp_local(z, boxZ - depth / 2, boxZ + depth / 2);
+
+  // Calculate distance between circle center and this closest point
+  float dx = x - closestX;
+  float dz = z - closestZ;
+
+  float distanceSquared = dx * dx + dz * dz;
+  return distanceSquared < (radius * radius);
+}
+
+void Player::resolveCollisionWithBox(float boxX, float boxZ, float width,
+                                     float depth) {
+  float closestX = clamp_local(x, boxX - width / 2, boxX + width / 2);
+  float closestZ = clamp_local(z, boxZ - depth / 2, boxZ + depth / 2);
+
+  float dx = x - closestX;
+  float dz = z - closestZ;
+  float distance = sqrt(dx * dx + dz * dz);
+
+  if (distance < radius && distance > 0.0f) {
+    float overlap = radius - distance;
+    float pushX = (dx / distance) * overlap;
+    float pushZ = (dz / distance) * overlap;
+
+    x += pushX;
+    z += pushZ;
+  } else if (distance == 0.0f) {
+    // Center is inside the box, push out towards nearest edge
+    // This is a simplification, ideally check min penetration
+    x += radius * 1.1f;
+  }
+}
+
 void Player::resolveCollision(float objX, float objZ, float objRadius) {
   float dx = x - objX;
   float dz = z - objZ;
@@ -165,28 +237,37 @@ void Player::render() {
   glTranslatef(x, y + bobOffset, z);
   glRotatef(-yaw, 0, 1, 0);
 
-  // Draw player as a simple capsule (cylinder + sphere)
+  // Draw player
   if (damageCooldown > 0.0f && (int)(damageCooldown * 10) % 2 == 0) {
     glColor3f(1.0f, 0.3f, 0.3f); // Flash red when damaged
   } else {
-    glColor3f(0.8f, 0.6f, 0.4f); // Treasure hunter brown
+    glColor3f(1.0f, 1.0f, 1.0f);
   }
 
-  // Body (cylinder)
-  GLUquadric *quad = gluNewQuadric();
-  glRotatef(-90, 1, 0, 0);
-  gluCylinder(quad, radius * 0.7f, radius * 0.7f, height * 0.6f, 16, 1);
+  if (playerModel && playerModel->getWidth() > 0) {
+    glPushMatrix();
+    glScalef(0.5f, 0.5f, 0.5f); // Adjust scale
+    glRotatef(180, 0, 1, 0);    // Face forward
+    playerModel->render();
+    glPopMatrix();
+  } else {
+    // Fallback: Body (cylinder)
+    glColor3f(0.8f, 0.6f, 0.4f);
+    GLUquadric *quad = gluNewQuadric();
+    glRotatef(-90, 1, 0, 0);
+    gluCylinder(quad, radius * 0.7f, radius * 0.7f, height * 0.6f, 16, 1);
 
-  // Head (sphere)
-  glTranslatef(0, 0, height * 0.6f);
-  glutSolidSphere(radius * 0.5f, 16, 16);
+    // Head (sphere)
+    glTranslatef(0, 0, height * 0.6f);
+    glutSolidSphere(radius * 0.5f, 16, 16);
 
-  // Backpack (small cube)
-  glColor3f(0.4f, 0.3f, 0.2f);
-  glTranslatef(0, -radius * 0.4f, 0);
-  glScalef(0.5f, 0.6f, 0.3f);
-  glutSolidCube(1.0f);
+    // Backpack (small cube)
+    glColor3f(0.4f, 0.3f, 0.2f);
+    glTranslatef(0, -radius * 0.4f, 0);
+    glScalef(0.5f, 0.6f, 0.3f);
+    glutSolidCube(1.0f);
 
-  gluDeleteQuadric(quad);
+    gluDeleteQuadric(quad);
+  }
   glPopMatrix();
 }

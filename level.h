@@ -6,6 +6,7 @@
 #ifndef LEVEL_H
 #define LEVEL_H
 
+#include "model.h"
 #include "player.h"
 #include "utils.h"
 #ifdef __APPLE__
@@ -109,6 +110,15 @@ protected:
   LightSource sunLight;
   std::vector<LightSource> lights;
 
+  // Resources
+  Texture wallTexture;
+  Texture groundTexture;
+
+  Model *pillarModel;
+  Model *treeModel;
+  Model *rockModel;
+  Model *groundModel; // New ground model
+
 public:
   Level();
   virtual ~Level();
@@ -126,6 +136,8 @@ public:
   void renderGround(float size, float r, float g, float b);
   void renderSkybox(float r, float g, float b);
   void renderWalls(float size, float height);
+
+  void loadCommonAssets();
 };
 
 // ============================================================================
@@ -168,6 +180,7 @@ private:
   void renderDesertEnvironment();
   void renderPillar(float x, float y, float z);
   void renderPalmTree(float x, float y, float z);
+  void renderRock(float x, float y, float z);
   void renderOrb(Collectible *orb);
   void renderChest(Chest *chest);
   void renderScorpion(Enemy *enemy);

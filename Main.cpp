@@ -70,14 +70,33 @@ void initOpenGL() {
   glFogf(GL_FOG_END, 150.0f);
 }
 
+// Cleanup function to stop background music on exit
+void cleanupMusic() {
+#ifdef __APPLE__
+  system("killall afplay 2>/dev/null");
+#endif
+}
+
 void startGame() {
+  initOpenGL();
   srand(time(NULL));
+
+  // Register cleanup function to stop music on exit
+  atexit(cleanupMusic);
+
+  // Start background music (continuous loop with low volume)
+#ifdef __APPLE__
+  system("killall afplay 2>/dev/null");
+  system("(while true; do afplay assets/background.wav -v 0.3; sleep 0.1; "
+         "done) >/dev/null 2>&1 &");
+#endif
 
   // Initialize camera
   camera = new Camera();
 
-  // Initialize player
+  // Initialize player at starting position
   player = new Player(0.0f, 1.0f, 0.0f);
+  player->loadModel("assets/player.obj");
 
   // Load Level 1
   currentLevel = new DesertLevel();
@@ -101,7 +120,25 @@ void nextLevel() {
 void restartLevel() {
   if (currentLevel) {
     currentLevel->reset();
-    player->reset();
+
+    // Reset player to initial spawn of the current level
+    if (currentState == LEVEL1) {
+      player->resetPosition(0.0f, 1.0f, 0.0f);
+    } else if (currentState == LEVEL2) {
+      // Keep player stats if just restarting level 2?
+      // Or full reset? User said "restart button not working well".
+      // Usually restart means try again.
+      player->resetPosition(0.0f, 1.0f, 0.0f);
+      // If it's a full game restart, we should reset health too.
+      // But 'R' usually means "retry level".
+      // Let's ensure health is reset if they died.
+      if (!player->isAlive()) {
+        player->reset();
+      }
+    }
+
+    // Reset camera
+    camera->setMode(THIRD_PERSON);
   }
 }
 
@@ -243,9 +280,46 @@ void renderHUD() {
     renderText(20, WINDOW_HEIGHT - 30, buffer);
   }
 
-  // Health
-  sprintf(buffer, "Health: %d", player->getHealth());
-  renderText(20, WINDOW_HEIGHT - 60, buffer);
+  // Health Bar
+  float healthPercent = (float)player->getHealth() / 100.0f;
+
+  // Background
+  glColor3f(0.3f, 0.3f, 0.3f);
+  glBegin(GL_QUADS);
+  glVertex2f(20, WINDOW_HEIGHT - 60);
+  glVertex2f(220, WINDOW_HEIGHT - 60);
+  glVertex2f(220, WINDOW_HEIGHT - 40);
+  glVertex2f(20, WINDOW_HEIGHT - 40);
+  glEnd();
+
+  // Foreground
+  if (healthPercent > 0.5f)
+    glColor3f(0.0f, 1.0f, 0.0f);
+  else if (healthPercent > 0.2f)
+    glColor3f(1.0f, 0.5f, 0.0f);
+  else
+    glColor3f(1.0f, 0.0f, 0.0f);
+
+  glBegin(GL_QUADS);
+  glVertex2f(20, WINDOW_HEIGHT - 60);
+  glVertex2f(20 + 200 * healthPercent, WINDOW_HEIGHT - 60);
+  glVertex2f(20 + 200 * healthPercent, WINDOW_HEIGHT - 40);
+  glVertex2f(20, WINDOW_HEIGHT - 40);
+  glEnd();
+
+  // Border
+  glColor3f(1.0f, 1.0f, 1.0f);
+  glLineWidth(2.0f);
+  glBegin(GL_LINE_LOOP);
+  glVertex2f(20, WINDOW_HEIGHT - 60);
+  glVertex2f(220, WINDOW_HEIGHT - 60);
+  glVertex2f(220, WINDOW_HEIGHT - 40);
+  glVertex2f(20, WINDOW_HEIGHT - 40);
+  glEnd();
+  glLineWidth(1.0f);
+
+  sprintf(buffer, "Health: %d%%", player->getHealth());
+  renderText(230, WINDOW_HEIGHT - 55, buffer);
 
   // Camera mode
   renderText(WINDOW_WIDTH - 200, WINDOW_HEIGHT - 30,
