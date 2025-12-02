@@ -87,7 +87,8 @@ void startGame() {
   // Start background music (continuous loop with low volume)
 #ifdef __APPLE__
   system("killall afplay 2>/dev/null");
-  system("(while true; do afplay assets/background.wav -v 0.3; sleep 0.1; "
+  system("(while true; do afplay assets/way-of-egypt-320819.mp3 -v 0.3; sleep "
+         "0.1; "
          "done) >/dev/null 2>&1 &");
 #endif
 
@@ -143,6 +144,9 @@ void restartLevel() {
 }
 
 void cleanup() {
+  // Stop background music
+  cleanupMusic();
+
   if (camera)
     delete camera;
   if (player)
