@@ -562,8 +562,12 @@ void DesertLevel::renderPillar(float x, float y, float z) {
 
   // Use loaded model if available
   if (pillarModel && pillarModel->getWidth() > 0) {
-    glScalef(2.0f, 2.0f, 2.0f); // Adjust scale as needed
+    glScalef(0.3f, 0.3f, 0.3f); // Adjust scale as needed
+    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+    glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
+
     pillarModel->render();
+
   } else {
     // Fallback rendering
     glTranslatef(0, 3, 0);

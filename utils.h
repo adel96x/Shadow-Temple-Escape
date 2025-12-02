@@ -69,7 +69,16 @@ struct LightSource {
 
 enum TrapType { SPIKE_TRAP, FALLING_ICICLE };
 
-enum ObstacleType { PILLAR, TREE, ICE_PILLAR, WALL, ROCK, CACTUS, PYRAMID };
+enum ObstacleType {
+  PILLAR,
+  TREE,
+  ICE_PILLAR,
+  WALL,
+  ROCK,
+  CACTUS,
+  PYRAMID,
+  SPHINX
+};
 
 // ============================================================================
 // COLLISION HELPERS

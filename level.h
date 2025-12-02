@@ -116,7 +116,7 @@ protected:
   // Resources
   Texture wallTexture;
   Texture groundTexture;
-
+  Model *sphinxModel;
   Model *pillarModel;
   Model *treeModel;
   Model *rockModel;
@@ -192,6 +192,7 @@ private:
   void renderCactus(float x, float y, float z); // NEW
   void renderPyramid(float x, float y, float z, float baseSize,
                      float height); // NEW
+  void renderSphinx(float x, float y, float z, float scale = 1.0f);
   void renderRock(float x, float y, float z);
   void renderOrb(Collectible *orb);
   void renderChest(Chest *chest);
@@ -235,6 +236,7 @@ private:
   void updateIcicles(float deltaTime);
   void updateEnemies(float deltaTime);
   void checkEnemyCollision();
+  void spawnSphinx();
 
   void renderIceEnvironment();
   void renderIcePillar(float x, float y, float z);
