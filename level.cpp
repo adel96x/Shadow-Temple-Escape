@@ -13,6 +13,36 @@
 // BASE LEVEL CLASS
 // ============================================================================
 
+// Initialize static members
+Model *Level::pillarModel = nullptr;
+Model *Level::snowmanModel = nullptr;
+Model *Level::christmasTreeModel = nullptr;
+Model *Level::snakeModel = nullptr;
+Model *Level::trapModel = nullptr;
+
+void Level::cleanupCommonAssets() {
+  if (pillarModel) {
+    delete pillarModel;
+    pillarModel = nullptr;
+  }
+  if (snowmanModel) {
+    delete snowmanModel;
+    snowmanModel = nullptr;
+  }
+  if (christmasTreeModel) {
+    delete christmasTreeModel;
+    christmasTreeModel = nullptr;
+  }
+  if (snakeModel) {
+    delete snakeModel;
+    snakeModel = nullptr;
+  }
+  if (trapModel) {
+    delete trapModel;
+    trapModel = nullptr;
+  }
+}
+
 Level::Level() {
   player = nullptr;
   portal = nullptr;
@@ -43,32 +73,47 @@ Level::~Level() {
     delete cactusModel;
   if (pyramidModel)
     delete pyramidModel;
+
+  // Static models are not deleted here
 }
 
 void Level::loadCommonAssets() {
-  // Initialize models
-  pillarModel = new Model();
+  // Initialize models if they don't exist
+  if (!pillarModel) {
+    pillarModel = new Model();
+    pillarModel->load("assets/pillar.obj");
+  }
+  if (!snowmanModel) {
+    snowmanModel = new Model();
+    snowmanModel->load("assets/snowman.obj");
+  }
+  if (!christmasTreeModel) {
+    christmasTreeModel = new Model();
+    christmasTreeModel->load("assets/christmasTree.obj");
+  }
+  if (!snakeModel) {
+    snakeModel = new Model();
+    snakeModel->load("assets/snake.obj");
+  }
+  if (!trapModel) {
+    trapModel = new Model();
+    trapModel->load("assets/traps.obj");
+  }
+
+  // Load non-static models
   treeModel = new Model();
   rockModel = new Model();
-  groundModel = new Model(); // Initialize groundModel
+  groundModel = new Model();
+  cactusModel = new Model();
+  pyramidModel = new Model();
 
-  // Try to load models, otherwise they will remain empty and render fallback
-  pillarModel->load("assets/pillar.obj");
-  treeModel->load("assets/tree.obj"); // Keep treeModel load
+  treeModel->load("assets/tree.obj");
   if (!rockModel->load("assets/rock.obj")) {
     printf("Failed to load rock model\n");
   }
   if (!groundModel->load("assets/ground.obj")) {
     printf("Failed to load ground model\n");
   }
-
-  cactusModel = new Model();
-  pyramidModel = new Model();
-
-  pillarModel->load("assets/pillar.obj");
-  treeModel->load("assets/tree.obj");
-  rockModel->load("assets/rock.obj");
-  groundModel->load("assets/ground.obj");
   cactusModel->load("assets/cactus.obj");
   pyramidModel->load("assets/pyramid.obj");
 
@@ -328,8 +373,22 @@ void DesertLevel::update(float deltaTime) {
                                         obs->depth)) {
         player->resolveCollisionWithBox(obs->x, obs->z, obs->width, obs->depth);
       }
+    } else if (obs->type == TREE || obs->type == CACTUS) {
+      // Use Box collision for trees and cacti to make them solid
+      // Trees and Cacti are taller than wide, so we use a reasonable box size
+      float width = obs->width;
+      float depth = obs->depth;
+      // Ensure minimum size for collision
+      if (width < 1.0f)
+        width = 1.0f;
+      if (depth < 1.0f)
+        depth = 1.0f;
+
+      if (player->checkCollisionWithBox(obs->x, obs->z, width, depth)) {
+        player->resolveCollisionWithBox(obs->x, obs->z, width, depth);
+      }
     } else {
-      // Use Cylinder/Sphere collision for trees/others
+      // Use Cylinder/Sphere collision for others
       float obsRadius = obs->width / 2.0f;
       if (player->checkCollision(obs->x, obs->z, obsRadius)) {
         player->resolveCollision(obs->x, obs->z, obsRadius);
@@ -520,19 +579,25 @@ void DesertLevel::render() {
   for (auto trap : traps) {
     glPushMatrix();
     glTranslatef(trap->x, trap->y, trap->z);
-    glScalef(trap->radius, 0.3f, trap->radius);
-    glutSolidCube(2.0f);
 
-    // Spikes
-    glColor3f(0.3f, 0.3f, 0.3f);
-    for (int i = 0; i < 8; i++) {
-      float angle = i * 45.0f;
-      glPushMatrix();
-      glRotatef(angle, 0, 1, 0);
-      glTranslatef(0.5f, 0.3f, 0);
-      glRotatef(-90, 1, 0, 0);
-      glutSolidCone(0.1f, 0.5f, 8, 1);
-      glPopMatrix();
+    if (trapModel && trapModel->getWidth() > 0) {
+      glScalef(0.2f, 0.2f, 0.2f); // Adjust scale as needed
+      trapModel->render();
+    } else {
+      glScalef(trap->radius, 0.3f, trap->radius);
+      glutSolidCube(2.0f);
+
+      // Spikes
+      glColor3f(0.3f, 0.3f, 0.3f);
+      for (int i = 0; i < 8; i++) {
+        float angle = i * 45.0f;
+        glPushMatrix();
+        glRotatef(angle, 0, 1, 0);
+        glTranslatef(0.5f, 0.3f, 0);
+        glRotatef(-90, 1, 0, 0);
+        glutSolidCone(0.1f, 0.5f, 8, 1);
+        glPopMatrix();
+      }
     }
     glPopMatrix();
   }
@@ -721,10 +786,14 @@ void DesertLevel::renderScorpion(Enemy *enemy) {
   glTranslatef(enemy->x, enemy->y, enemy->z);
   glRotatef(enemy->rotation, 0, 1, 0);
 
-  glColor3f(0.4f, 0.25f, 0.1f);
-  glScalef(1.2f, 0.5f, 0.8f);
-  glutSolidSphere(0.7f, 12, 12);
-
+  if (snakeModel && snakeModel->getWidth() > 0) {
+    glScalef(0.05f, 0.05f, 0.05f); // Adjust scale as needed
+    snakeModel->render();
+  } else {
+    // Fallback rendering
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glutSolidSphere(0.5f, 20, 20);
+  }
   glPopMatrix();
 }
 
@@ -789,6 +858,16 @@ void IceLevel::init(Player *p) {
   // Load ice-specific textures
   snowTexture = loadBMP("assets/snow.bmp");
   iceWallTexture = loadBMP("assets/ice_wall.bmp");
+
+  // Initialize snow particles
+  for (int i = 0; i < 2000; i++) { // Increased to 2000 for "a lot" of snow
+    Snowflake s;
+    s.x = (rand() % 100) - 50.0f;
+    s.y = (rand() % 50);
+    s.z = (rand() % 100) - 50.0f;
+    s.speed = 2.0f + (float)(rand() % 100) / 50.0f;
+    snowParticles.push_back(s);
+  }
 }
 
 void IceLevel::spawnEnemies() {
@@ -812,10 +891,24 @@ void IceLevel::spawnEnemies() {
 void IceLevel::spawnObstacles() {
   obstacles.clear();
 
-  obstacles.push_back(new Obstacle(10, 0, 10, 2, 5, 2, ICE_PILLAR));
-  obstacles.push_back(new Obstacle(-10, 0, -10, 2, 5, 2, ICE_PILLAR));
-  obstacles.push_back(new Obstacle(20, 0, -15, 2, 5, 2, ICE_PILLAR));
-  obstacles.push_back(new Obstacle(-18, 0, 8, 2, 5, 2, ICE_PILLAR));
+  obstacles.push_back(new Obstacle(10, 0, 10, 2, 5, 2, CHRISTMAS_TREE));
+  obstacles.push_back(new Obstacle(-10, 0, -10, 2, 5, 2, CHRISTMAS_TREE));
+  obstacles.push_back(new Obstacle(20, 0, -15, 2, 5, 2, CHRISTMAS_TREE));
+  obstacles.push_back(new Obstacle(-18, 0, 8, 2, 5, 2, CHRISTMAS_TREE));
+  obstacles.push_back(new Obstacle(15, 0, 20, 2, 4, 2, ROCK));   // Snowman 1
+  obstacles.push_back(new Obstacle(-20, 0, 15, 2, 4, 2, ROCK));  // Snowman 2
+  obstacles.push_back(new Obstacle(25, 0, -10, 2, 4, 2, ROCK));  // Snowman 3
+  obstacles.push_back(new Obstacle(-15, 0, -20, 2, 4, 2, ROCK)); // Snowman 4
+
+  // Spawn many ground traps (SPIKE_TRAP) - increased to 50 for harder gameplay
+  for (int i = 0; i < 50; i++) {
+    float x = (rand() % 80) - 40.0f;
+    float z = (rand() % 80) - 40.0f;
+    // Avoid spawning too close to center (start area) - reduced safe zone
+    if (abs(x) > 3 || abs(z) > 3) { // Reduced from 5 to 3 for more traps
+      traps.push_back(new Trap(x, 0.1f, z, SPIKE_TRAP));
+    }
+  }
 }
 
 void IceLevel::spawnIcicle() {
@@ -831,7 +924,30 @@ void IceLevel::update(float deltaTime) {
   updateTimer(deltaTime);
   updateIcicles(deltaTime);
   updateEnemies(deltaTime);
+  updateEnemies(deltaTime);
   checkEnemyCollision();
+
+  // Check trap collisions (Ground traps and falling icicles)
+  for (auto trap : traps) {
+    // Use a larger radius for better gameplay feel
+    float trapRadius = (trap->type == FALLING_ICICLE) ? 1.5f : 1.5f;
+
+    if (player->checkCollision(trap->x, trap->z, trapRadius)) {
+      // For falling icicles, check height and active status
+      if (trap->type == FALLING_ICICLE) {
+        if (trap->active && trap->y < 4.0f && player->canTakeDamage()) {
+          player->takeDamage(15);
+          trap->active = false; // Destroy on impact
+        }
+      } else if (trap->type == SPIKE_TRAP) {
+        // Ground traps always hit if player can take damage (no active check
+        // needed)
+        if (player->canTakeDamage()) {
+          player->takeDamage(20); // Increased damage for ground traps
+        }
+      }
+    }
+  }
 
   for (auto obs : obstacles) {
     float obsRadius = obs->width / 2.0f;
@@ -844,6 +960,16 @@ void IceLevel::update(float deltaTime) {
       player->checkCollision(portal->x, portal->z, portal->radius)) {
     levelComplete = true;
   }
+
+  // Update snow particles
+  for (auto &s : snowParticles) {
+    s.y -= s.speed * deltaTime;
+    if (s.y < 0) {
+      s.y = 50.0f;
+      s.x = (rand() % 100) - 50.0f; // Randomize X/Z on respawn for variety
+      s.z = (rand() % 100) - 50.0f;
+    }
+  }
 }
 
 void IceLevel::updateTimer(float deltaTime) {
@@ -854,8 +980,10 @@ void IceLevel::updateTimer(float deltaTime) {
     spawnIcicle();
     icicleSpawnTimer = 0.0f;
 
-    if (icicleSpawnInterval > 1.5f) {
-      icicleSpawnInterval -= 0.1f;
+    // Make it progressively harder - spawn faster over time
+    if (icicleSpawnInterval >
+        0.5f) { // Reduced from 1.5f to 0.5f for much more snowballs
+      icicleSpawnInterval -= 0.15f; // Faster reduction
     }
   }
 
@@ -883,8 +1011,16 @@ void IceLevel::updateIcicles(float deltaTime) {
       icicle->y -= 15.0f * deltaTime;
 
       if (icicle->y <= 0.5f) {
-        if (player->checkCollision(icicle->x, icicle->z, icicle->radius)) {
-          player->takeDamage(25);
+        // Damage increases over time to make game harder
+        int baseDamage = 25;
+        int timeBonusDamage =
+            (int)(survivalTimer / 10.0f) * 5; // +5 damage every 10 seconds
+        int totalDamage = baseDamage + timeBonusDamage;
+
+        // Increased damage radius for better hit detection
+        if (player->checkCollision(icicle->x, icicle->z,
+                                   icicle->radius * 2.0f)) {
+          player->takeDamage(totalDamage);
         }
 
         delete icicle;
@@ -1014,9 +1150,21 @@ void IceLevel::renderIcicle(Trap *icicle) {
   glPushMatrix();
   glTranslatef(icicle->x, icicle->y, icicle->z);
 
-  glColor3f(0.8f, 0.9f, 1.0f);
-  glRotatef(180, 1, 0, 0);
-  glutSolidCone(0.3f, 2.0f, 8, 1);
+  if (icicle->type == FALLING_ICICLE) {
+    // Render as Ice Ball (Sphere)
+    glColor3f(0.8f, 0.9f, 1.0f);   // Ice color
+    glutSolidSphere(1.0f, 16, 16); // Ice ball
+  } else if (icicle->type == SPIKE_TRAP) {
+    // Render as Spike Trap (Ground Trap)
+    if (trapModel && trapModel->getWidth() > 0) {
+      glScalef(0.2f, 0.2f, 0.2f); // Adjust scale as needed
+      trapModel->render();
+    } else {
+      // Fallback
+      glColor3f(0.5f, 0.5f, 0.5f);
+      glutSolidCone(0.5f, 1.0f, 8, 1);
+    }
+  }
 
   glPopMatrix();
 }
@@ -1161,11 +1309,10 @@ void IceLevel::render() {
   glLightfv(GL_LIGHT0, GL_DIFFUSE, sunLight.diffuse.data());
   glLightfv(GL_LIGHT0, GL_SPECULAR, sunLight.specular.data());
 
-  renderIceEnvironment();
+  // Reset color to white to prevent state leakage (e.g. from red timer)
+  glColor3f(1.0f, 1.0f, 1.0f);
 
-  for (auto obs : obstacles) {
-    renderIcePillar(obs->x, obs->y, obs->z);
-  }
+  renderIceEnvironment();
 
   for (auto enemy : enemies) {
     renderIceElemental(enemy);
@@ -1176,6 +1323,27 @@ void IceLevel::render() {
       renderWarningCircle(icicle->x, icicle->z, icicle->radius);
     } else {
       renderIcicle(icicle);
+    }
+  }
+  for (auto obs : obstacles) {
+    if (obs->type == ICE_PILLAR) {
+      renderIcePillar(obs->x, obs->y, obs->z);
+    } else if (obs->type == CHRISTMAS_TREE) {
+      glPushMatrix();
+      glTranslatef(obs->x, obs->y, obs->z);
+      if (christmasTreeModel && christmasTreeModel->getWidth() > 0) {
+        glScalef(0.15f, 0.15f, 0.15f); // Increased scale from 0.05f to 0.15f
+        glColor3f(1.0f, 1.0f, 1.0f);   // Reset color to white
+        christmasTreeModel->render();
+      } else {
+        // Fallback: Green cone
+        glColor3f(0.0f, 0.5f, 0.0f);
+        glRotatef(-90, 1, 0, 0);
+        glutSolidCone(2.0f, 5.0f, 8, 1);
+      }
+      glPopMatrix();
+    } else if (obs->type == ROCK) { // We're using ROCK type for snowmen
+      renderSnowman(obs->x, obs->y, obs->z);
     }
   }
 
@@ -1193,4 +1361,62 @@ void IceLevel::renderIceEnvironment() {
 
   // Icy blue walls
   renderWalls(45, 8, iceWallTexture);
+
+  // Render snow particles as small spheres for better visibility
+  glDisable(GL_LIGHTING);
+  glColor3f(1.0f, 1.0f, 1.0f);
+  for (const auto &s : snowParticles) {
+    glPushMatrix();
+    glTranslatef(s.x, s.y, s.z);
+    glutSolidSphere(0.1f, 4, 4); // Small sphere
+    glPopMatrix();
+  }
+  glEnable(GL_LIGHTING);
+}
+void IceLevel::renderSnowman(float x, float y, float z) {
+  glPushMatrix();
+  glTranslatef(x, y, z);
+
+  if (snowmanModel && snowmanModel->getWidth() > 0) {
+    // Rotate snowman upright if needed
+    glRotatef(180.0f, 0.0f, 1.0f, 0.0f);
+
+    // Scale to appropriate size
+    glScalef(1.0f, 1.0f, 1.0f);
+
+    // White color for snowman
+    glColor3f(1.0f, 1.0f, 1.0f);
+    snowmanModel->render();
+  } else {
+    // Fallback: Simple snowman made of spheres
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Bottom sphere
+    glPushMatrix();
+    glTranslatef(0, 0.8f, 0);
+    glutSolidSphere(0.8f, 16, 16);
+    glPopMatrix();
+
+    // Middle sphere
+    glPushMatrix();
+    glTranslatef(0, 1.8f, 0);
+    glutSolidSphere(0.6f, 16, 16);
+    glPopMatrix();
+
+    // Head sphere
+    glPushMatrix();
+    glTranslatef(0, 2.6f, 0);
+    glutSolidSphere(0.4f, 16, 16);
+    glPopMatrix();
+
+    // Carrot nose
+    glColor3f(1.0f, 0.5f, 0.0f);
+    glPushMatrix();
+    glTranslatef(0, 2.6f, 0.4f);
+    glRotatef(90, 1, 0, 0);
+    glutSolidCone(0.1f, 0.3f, 8, 1);
+    glPopMatrix();
+  }
+
+  glPopMatrix();
 }

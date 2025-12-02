@@ -77,7 +77,8 @@ enum ObstacleType {
   ROCK,
   CACTUS,
   PYRAMID,
-  SPHINX
+  SPHINX,
+  CHRISTMAS_TREE
 };
 
 // ============================================================================

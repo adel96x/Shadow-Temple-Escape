@@ -149,6 +149,8 @@ void cleanup() {
     delete player;
   if (currentLevel)
     delete currentLevel;
+
+  Level::cleanupCommonAssets();
 }
 
 // ============================================================================

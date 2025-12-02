@@ -117,14 +117,20 @@ protected:
   Texture wallTexture;
   Texture groundTexture;
   Model *sphinxModel;
-  Model *pillarModel;
+  static Model *pillarModel;
   Model *treeModel;
   Model *rockModel;
   Model *groundModel;
   Model *cactusModel;  // NEW
   Model *pyramidModel; // NEW
+  static Model *snowmanModel;
+  static Model *christmasTreeModel;
+  static Model *snakeModel;
+  static Model *trapModel;
 
 public:
+  static void cleanupCommonAssets();
+
   Level();
   virtual ~Level();
 
@@ -215,6 +221,12 @@ private:
   Texture snowTexture;
   Texture iceWallTexture;
 
+  struct Snowflake {
+    float x, y, z;
+    float speed;
+  };
+  std::vector<Snowflake> snowParticles;
+
 public:
   IceLevel();
   ~IceLevel();
@@ -245,6 +257,7 @@ private:
   void renderWarningCircle(float x, float z, float radius);
   void renderIceElemental(Enemy *enemy);
   void renderPortal();
+  void renderSnowman(float x, float y, float z);
   void renderTimer3D();
 };
 
