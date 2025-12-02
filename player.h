@@ -47,6 +47,8 @@ private:
 
   // Damage cooldown
   float damageCooldown;
+  float damageFlashTimer;
+  bool alive;
 
   // Initial position for reset
   float initialX, initialY, initialZ;
@@ -83,7 +85,8 @@ public:
   float getHeight() const { return height; }
   int getHealth() const { return health; }
   int getOrbsCollected() const { return orbsCollected; }
-  bool isAlive() const { return health > 0; }
+  bool isAlive() const { return alive; }
+  float getDamageFlashTimer() const { return damageFlashTimer; }
   bool canTakeDamage() const { return damageCooldown <= 0.0f; }
 
   // Setters

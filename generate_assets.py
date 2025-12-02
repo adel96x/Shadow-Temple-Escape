@@ -1,38 +1,487 @@
+#!/usr/bin/env python3
+"""
+Enhanced Asset Generator for Shadow Temple Escape
+Creates professional-quality textures and improved 3D models
+"""
+
 import struct
 import math
 import os
+import random
 
-def create_bmp(filename, width, height, pattern_type="checker"):
-    # BMP Header
+# =============================================================================
+# PROFESSIONAL TEXTURE GENERATION
+# =============================================================================
+
+def create_sand_texture(filename, width=512, height=512):
+    """Create realistic sand texture with grain and variation"""
+    print(f"Generating professional sand texture: {filename}")
+    
     file_size = 54 + width * height * 3
-    # Format: 2s (BM) I (size) H (res) H (res) I (offset) I (header size) I (w) I (h) H (planes) H (bpp) I (compression) I (img size) I (xres) I (yres) I (colors) I (important)
-    # Total items: 16
-    # 2s + I + H + H + I + I + I + I + H + H + I + I + I + I + I + I
-    # <2sIHHIIIIHHIIIIII
-    header = struct.pack('<2sIHHIIIIHHIIIIII', b'BM', file_size, 0, 0, 54, 40, width, height, 1, 24, 0, width * height * 3, 0, 0, 0, 0)
+    header = struct.pack('<2sIHHIIIIHHIIIIII', 
+                        b'BM', file_size, 0, 0, 54, 40, 
+                        width, height, 1, 24, 0, 
+                        width * height * 3, 0, 0, 0, 0)
     
     with open(filename, 'wb') as f:
         f.write(header)
+        
+        # Base sand colors (warm desert sand)
+        base_colors = [
+            (237, 201, 175),  # Light sand
+            (220, 182, 150),  # Medium sand
+            (210, 175, 140),  # Darker sand
+            (200, 165, 130),  # Deep sand
+        ]
+        
         for y in range(height):
             for x in range(width):
-                r, g, b = 0, 0, 0
-                if pattern_type == "checker":
-                    if ((x // 32) + (y // 32)) % 2 == 0:
-                        r, g, b = 200, 200, 200
-                    else:
-                        r, g, b = 100, 100, 100
-                elif pattern_type == "noise":
-                    import random
-                    val = random.randint(100, 200)
-                    r, g, b = val, val, val
-                elif pattern_type == "bricks":
-                    if y % 32 < 2 or x % 64 < 2:
-                        r, g, b = 50, 50, 50 # Mortar
-                    else:
-                        r, g, b = 150, 75, 50 # Brick
+                # Multi-octave noise for realistic sand grain
+                noise = 0
+                frequency = 1
+                amplitude = 1
+                for octave in range(4):
+                    nx = x * frequency / width
+                    ny = y * frequency / height
+                    noise += (math.sin(nx * 10 + ny * 7) * 0.5 + 0.5) * amplitude
+                    frequency *= 2
+                    amplitude *= 0.5
                 
-                f.write(struct.pack('BBB', b, g, r)) # BGR format
+                noise = noise / 2.0  # Normalize
+                
+                # Select base color with variation
+                color_index = int(noise * (len(base_colors) - 1))
+                color_index = max(0, min(len(base_colors) - 1, color_index))
+                base_r, base_g, base_b = base_colors[color_index]
+                
+                # Add fine grain detail
+                grain = random.randint(-15, 15)
+                
+                # Add slight color variation for realism
+                r = max(0, min(255, base_r + grain + random.randint(-5, 5)))
+                g = max(0, min(255, base_g + grain + random.randint(-5, 5)))
+                b = max(0, min(255, base_b + grain + random.randint(-5, 5)))
+                
+                f.write(struct.pack('BBB', b, g, r))
 
+def create_snow_texture(filename, width=512, height=512):
+    """Create realistic snow texture with sparkle effect"""
+    print(f"Generating professional snow texture: {filename}")
+    
+    file_size = 54 + width * height * 3
+    header = struct.pack('<2sIHHIIIIHHIIIIII', 
+                        b'BM', file_size, 0, 0, 54, 40, 
+                        width, height, 1, 24, 0, 
+                        width * height * 3, 0, 0, 0, 0)
+    
+    with open(filename, 'wb') as f:
+        f.write(header)
+        
+        for y in range(height):
+            for x in range(width):
+                # Base snow is very bright white with slight blue tint
+                base_r, base_g, base_b = 245, 248, 255
+                
+                # Add subtle texture variation
+                noise = (math.sin(x * 0.1) + math.cos(y * 0.1)) * 5
+                
+                # Random sparkle effect (ice crystals)
+                if random.random() > 0.98:
+                    sparkle = random.randint(20, 40)
+                else:
+                    sparkle = 0
+                
+                # Slight shadow variation for depth
+                shadow = int((math.sin(x * 0.05 + y * 0.05)) * 8)
+                
+                r = max(200, min(255, int(base_r + noise + sparkle + shadow)))
+                g = max(205, min(255, int(base_g + noise + sparkle + shadow)))
+                b = max(210, min(255, int(base_b + noise + sparkle + shadow)))
+                
+                f.write(struct.pack('BBB', b, g, r))
+
+def create_ice_wall_texture(filename, width=256, height=256):
+    """Create icy blue wall texture"""
+    print(f"Generating ice wall texture: {filename}")
+    
+    file_size = 54 + width * height * 3
+    header = struct.pack('<2sIHHIIIIHHIIIIII', 
+                        b'BM', file_size, 0, 0, 54, 40, 
+                        width, height, 1, 24, 0, 
+                        width * height * 3, 0, 0, 0, 0)
+    
+    with open(filename, 'wb') as f:
+        f.write(header)
+        
+        for y in range(height):
+            for x in range(width):
+                # Icy blue-white gradient
+                base_r = 180 + int(math.sin(x * 0.1) * 20)
+                base_g = 210 + int(math.cos(y * 0.1) * 20)
+                base_b = 240 + int(math.sin((x + y) * 0.05) * 15)
+                
+                # Ice crack pattern
+                if (x % 32 < 2 or y % 32 < 2) and random.random() > 0.7:
+                    base_r -= 40
+                    base_g -= 30
+                    base_b -= 20
+                
+                r = max(0, min(255, base_r))
+                g = max(0, min(255, base_g))
+                b = max(0, min(255, base_b))
+                
+                f.write(struct.pack('BBB', b, g, r))
+
+def create_sandstone_wall_texture(filename, width=256, height=256):
+    """Create sandstone brick wall texture"""
+    print(f"Generating sandstone wall texture: {filename}")
+    
+    file_size = 54 + width * height * 3
+    header = struct.pack('<2sIHHIIIIHHIIIIII', 
+                        b'BM', file_size, 0, 0, 54, 40, 
+                        width, height, 1, 24, 0, 
+                        width * height * 3, 0, 0, 0, 0)
+    
+    with open(filename, 'wb') as f:
+        f.write(header)
+        
+        for y in range(height):
+            for x in range(width):
+                # Sandstone base colors
+                base_r, base_g, base_b = 210, 180, 140
+                
+                # Brick pattern with offset rows
+                brick_h = 32
+                brick_w = 64
+                row = y // brick_h
+                offset = (row % 2) * (brick_w // 2)
+                
+                # Mortar lines
+                if (y % brick_h < 2) or ((x + offset) % brick_w < 2):
+                    # Darker mortar
+                    base_r, base_g, base_b = 160, 140, 100
+                else:
+                    # Add texture to bricks
+                    texture = random.randint(-10, 10)
+                    base_r += texture
+                    base_g += texture
+                    base_b += int(texture * 0.8)
+                
+                r = max(0, min(255, base_r))
+                g = max(0, min(255, base_g))
+                b = max(0, min(255, base_b))
+                
+                f.write(struct.pack('BBB', b, g, r))
+
+# =============================================================================
+# ENHANCED 3D MODELS
+# =============================================================================
+
+def create_detailed_player(filename):
+    """Create a detailed adventurer character"""
+    print(f"Generating detailed player model: {filename}")
+    
+    with open(filename, 'w') as f:
+        f.write("# Detailed Adventure Character\n")
+        f.write("# Created for Shadow Temple Escape\n\n")
+        
+        def write_box(x, y, z, w, h, d, v_start):
+            """Helper to write a box with proper normals"""
+            hw, hh, hd = w/2, h/2, d/2
+            # 8 vertices of box
+            verts = [
+                (x-hw, y-hh, z-hd), (x+hw, y-hh, z-hd), 
+                (x+hw, y+hh, z-hd), (x-hw, y+hh, z-hd),
+                (x-hw, y-hh, z+hd), (x+hw, y-hh, z+hd), 
+                (x+hw, y+hh, z+hd), (x-hw, y+hh, z+hd)
+            ]
+            for v in verts:
+                f.write(f"v {v[0]} {v[1]} {v[2]}\n")
+            
+            # Faces with proper winding
+            faces = [
+                (1,2,3,4), (5,8,7,6), (1,5,6,2), 
+                (4,3,7,8), (1,4,8,5), (2,6,7,3)
+            ]
+            for face in faces:
+                v1, v2, v3, v4 = [i + v_start - 1 for i in face]
+                f.write(f"f {v1} {v2} {v3} {v4}\n")
+            return v_start + 8
+        
+        v_idx = 1
+        
+        # LEGS (with boots)
+        # Left boot
+        v_idx = write_box(-0.3, 0.15, 0, 0.25, 0.3, 0.3, v_idx)
+        # Right boot
+        v_idx = write_box(0.3, 0.15, 0, 0.25, 0.3, 0.3, v_idx)
+        
+        # Left leg
+        v_idx = write_box(-0.3, 0.6, 0, 0.22, 0.6, 0.22, v_idx)
+        # Right leg
+        v_idx = write_box(0.3, 0.6, 0, 0.22, 0.6, 0.22, v_idx)
+        
+        # TORSO
+        # Belt
+        v_idx = write_box(0, 1.0, 0, 0.7, 0.15, 0.35, v_idx)
+        # Main torso
+        v_idx = write_box(0, 1.4, 0, 0.65, 0.7, 0.3, v_idx)
+        # Chest armor plate
+        v_idx = write_box(0, 1.5, 0.16, 0.5, 0.5, 0.08, v_idx)
+        
+        # SHOULDERS
+        # Left shoulder pad
+        v_idx = write_box(-0.45, 1.75, 0, 0.3, 0.25, 0.3, v_idx)
+        # Right shoulder pad
+        v_idx = write_box(0.45, 1.75, 0, 0.3, 0.25, 0.3, v_idx)
+        
+        # ARMS
+        # Left upper arm
+        v_idx = write_box(-0.45, 1.35, 0, 0.18, 0.5, 0.18, v_idx)
+        # Right upper arm
+        v_idx = write_box(0.45, 1.35, 0, 0.18, 0.5, 0.18, v_idx)
+        
+        # Left forearm
+        v_idx = write_box(-0.45, 0.85, 0.1, 0.16, 0.4, 0.16, v_idx)
+        # Right forearm
+        v_idx = write_box(0.45, 0.85, 0.1, 0.16, 0.4, 0.16, v_idx)
+        
+        # HANDS
+        # Left hand
+        v_idx = write_box(-0.45, 0.6, 0.15, 0.14, 0.2, 0.14, v_idx)
+        # Right hand
+        v_idx = write_box(0.45, 0.6, 0.15, 0.14, 0.2, 0.14, v_idx)
+        
+        # NECK
+        v_idx = write_box(0, 1.85, 0, 0.18, 0.15, 0.18, v_idx)
+        
+        # HEAD
+        # Main head
+        v_idx = write_box(0, 2.1, 0, 0.35, 0.4, 0.35, v_idx)
+        # Nose
+        v_idx = write_box(0, 2.1, 0.2, 0.08, 0.12, 0.08, v_idx)
+        
+        # HAT
+        # Brim
+        v_idx = write_box(0, 2.4, 0, 0.7, 0.08, 0.7, v_idx)
+        # Crown
+        v_idx = write_box(0, 2.6, 0, 0.4, 0.3, 0.4, v_idx)
+        
+        # BACKPACK
+        v_idx = write_box(0, 1.4, -0.25, 0.45, 0.6, 0.25, v_idx)
+        # Bedroll on top
+        v_idx = write_box(0, 1.9, -0.25, 0.15, 0.15, 0.4, v_idx)
+        
+        # ACCESSORIES
+        # Water bottle on belt
+        v_idx = write_box(0.4, 1.0, 0.2, 0.12, 0.25, 0.12, v_idx)
+        # Pouch on belt
+        v_idx = write_box(-0.35, 0.95, 0.15, 0.15, 0.15, 0.15, v_idx)
+
+def create_pyramid(filename):
+    """Create Egyptian-style pyramid"""
+    print(f"Generating pyramid model: {filename}")
+    
+    with open(filename, 'w') as f:
+        f.write("# Pyramid\n")
+        f.write("# Base and apex for desert temple\n\n")
+        
+        size = 10
+        height = 8
+        
+        # Base vertices (square)
+        f.write(f"v {-size} 0 {-size}\n")  # 1
+        f.write(f"v {size} 0 {-size}\n")   # 2
+        f.write(f"v {size} 0 {size}\n")    # 3
+        f.write(f"v {-size} 0 {size}\n")   # 4
+        
+        # Apex
+        f.write(f"v 0 {height} 0\n")       # 5
+        
+        # Normals
+        f.write("vn 0 -1 0\n")  # Base normal (down)
+        f.write("vn 0.7071 0.7071 0\n")   # Side normals (outward + up)
+        f.write("vn -0.7071 0.7071 0\n")
+        f.write("vn 0 0.7071 0.7071\n")
+        f.write("vn 0 0.7071 -0.7071\n")
+        
+        # Base face
+        f.write("f 1//1 2//1 3//1 4//1\n")
+        
+        # Side faces (triangles)
+        f.write("f 1//2 2//2 5//2\n")  # Front
+        f.write("f 2//3 3//3 5//3\n")  # Right
+        f.write("f 3//4 4//4 5//4\n")  # Back
+        f.write("f 4//5 1//5 5//5\n")  # Left
+
+def create_cactus(filename):
+    """Create desert cactus"""
+    print(f"Generating cactus model: {filename}")
+    
+    with open(filename, 'w') as f:
+        f.write("# Desert Cactus\n\n")
+        
+        # Main trunk (cylinder approximation with 8 sides)
+        trunk_height = 4
+        trunk_radius = 0.4
+        segments = 8
+        
+        # Bottom circle
+        for i in range(segments):
+            angle = 2 * math.pi * i / segments
+            x = trunk_radius * math.cos(angle)
+            z = trunk_radius * math.sin(angle)
+            f.write(f"v {x} 0 {z}\n")
+        
+        # Top circle
+        for i in range(segments):
+            angle = 2 * math.pi * i / segments
+            x = trunk_radius * math.cos(angle)
+            z = trunk_radius * math.sin(angle)
+            f.write(f"v {x} {trunk_height} {z}\n")
+        
+        # Side arms (smaller cylinders)
+        # Left arm
+        arm_y = 2.5
+        arm_length = 1.5
+        arm_radius = 0.25
+        
+        for i in range(4):
+            angle = 2 * math.pi * i / 4
+            y = arm_y + arm_radius * math.sin(angle)
+            z = arm_radius * math.cos(angle)
+            f.write(f"v {-trunk_radius} {y} {z}\n")
+            f.write(f"v {-trunk_radius - arm_length} {y} {z}\n")
+        
+        # Faces for trunk
+        for i in range(segments):
+            next_i = (i + 1) % segments
+            f.write(f"f {i+1} {next_i+1} {next_i+segments+1} {i+segments+1}\n")
+
+# =============================================================================
+# SOUND EFFECTS (Keep existing + add new ones)
+# =============================================================================
+
+def create_wav(filename, freq=440.0, duration=0.5):
+    """Create simple WAV sound effect"""
+    sample_rate = 44100
+    num_samples = int(sample_rate * duration)
+    
+    header = bytearray()
+    header += b'RIFF'
+    header += struct.pack('<I', 36 + num_samples * 2)
+    header += b'WAVEfmt '
+    header += struct.pack('<I', 16)
+    header += struct.pack('<H', 1)
+    header += struct.pack('<H', 1)
+    header += struct.pack('<I', sample_rate)
+    header += struct.pack('<I', sample_rate * 2)
+    header += struct.pack('<H', 2)
+    header += struct.pack('<H', 16)
+    header += b'data'
+    header += struct.pack('<I', num_samples * 2)
+    
+    with open(filename, 'wb') as f:
+        f.write(header)
+        for i in range(num_samples):
+            t = float(i) / sample_rate
+            value = 32767.0 * math.sin(2.0 * math.pi * freq * t) * (1.0 - t/duration)
+            value = max(-32767, min(32767, int(value)))
+            f.write(struct.pack('<h', value))
+
+def create_background_music(filename, duration=30.0):
+    """Create mysterious adventure music"""
+    sample_rate = 44100
+    num_samples = int(sample_rate * duration)
+    
+    header = bytearray()
+    header += b'RIFF'
+    header += struct.pack('<I', 36 + num_samples * 2)
+    header += b'WAVEfmt '
+    header += struct.pack('<I', 16)
+    header += struct.pack('<H', 1)
+    header += struct.pack('<H', 1)
+    header += struct.pack('<I', sample_rate)
+    header += struct.pack('<I', sample_rate * 2)
+    header += struct.pack('<H', 2)
+    header += struct.pack('<H', 16)
+    header += b'data'
+    header += struct.pack('<I', num_samples * 2)
+    
+    # Minor key for mysterious temple vibe
+    notes = {
+        'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'E4': 329.63,
+        'F4': 349.23, 'G4': 392.00, 'A4': 440.00, 'C5': 523.25
+    }
+    
+    melody = ['A3', 'C4', 'E4', 'D4', 'C4', 'A3', 'G4', 'F4']
+    bass = ['A3', 'A3', 'F4', 'F4']
+    
+    with open(filename, 'wb') as f:
+        f.write(header)
+        
+        beat_duration = 0.6
+        for i in range(num_samples):
+            t = float(i) / sample_rate
+            beat = int(t / beat_duration)
+            
+            melody_note = melody[beat % len(melody)]
+            bass_note = bass[(beat // 2) % len(bass)]
+            
+            beat_t = (t % beat_duration) / beat_duration
+            envelope = math.sin(beat_t * math.pi) * 0.8
+            
+            # Melody
+            melody_val = 8000 * math.sin(2.0 * math.pi * notes[melody_note] * t) * envelope
+            # Bass
+            bass_val = 6000 * math.sin(2.0 * math.pi * notes[bass_note] * t) * 0.6
+            # Ambient pad
+            pad_val = 3000 * math.sin(2.0 * math.pi * notes[melody_note] * 0.5 * t)
+            
+            value = melody_val + bass_val + pad_val
+            value = max(-32767, min(32767, int(value)))
+            f.write(struct.pack('<h', value))
+
+# =============================================================================
+# MAIN EXECUTION
+# =============================================================================
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("ENHANCED ASSET GENERATOR")
+    print("Shadow Temple Escape - Professional Edition")
+    print("=" * 60)
+    
+    if not os.path.exists("assets"):
+        os.makedirs("assets")
+        print("✓ Created assets directory\n")
+    
+    print("\n[1/4] GENERATING PROFESSIONAL TEXTURES")
+    print("-" * 60)
+    
+    # Ground textures
+    create_sand_texture("assets/sand_ground.bmp", 512, 512)
+    create_snow_texture("assets/snow_ground.bmp", 512, 512)
+    
+    # Wall textures
+    create_sandstone_wall_texture("assets/sandstone_wall.bmp", 256, 256)
+    create_ice_wall_texture("assets/ice_wall.bmp", 256, 256)
+    
+    # Keep old names for compatibility
+    create_sand_texture("assets/ground.bmp", 512, 512)
+    create_sandstone_wall_texture("assets/wall.bmp", 256, 256)
+    
+    print("\n[2/4] GENERATING ENHANCED 3D MODELS")
+    print("-" * 60)
+    
+    # Enhanced player
+    create_detailed_player("assets/player.obj")
+    
+    # Desert environment
+    create_pyramid("assets/pyramid.obj")
+    create_cactus("assets/cactus.obj")
+    
+    # Keep existing models
 def create_obj_cube(filename):
     with open(filename, 'w') as f:
         f.write("# Cube\n")
@@ -66,59 +515,6 @@ def create_obj_tree(filename):
         f.write("f 1 2 3 4\nf 5 8 7 6\nf 1 5 6 2\nf 2 6 7 3\nf 3 7 8 4\nf 4 8 5 1\n") # Trunk faces
         f.write("f 9 10 13\nf 10 11 13\nf 11 12 13\nf 12 9 13\nf 9 12 11 10\n") # Leaves faces
 
-def create_obj_humanoid(filename):
-    with open(filename, 'w') as f:
-        f.write("# Low-poly Adventurer\n")
-        
-        # Helper to write a box
-        def write_box(x, y, z, w, h, d, v_start):
-            hw, hh, hd = w/2, h, d/2
-            verts = [
-                (x-hw, y, z-hd), (x+hw, y, z-hd), (x+hw, y+hh, z-hd), (x-hw, y+hh, z-hd),
-                (x-hw, y, z+hd), (x+hw, y, z+hd), (x+hw, y+hh, z+hd), (x-hw, y+hh, z+hd)
-            ]
-            for v in verts:
-                f.write(f"v {v[0]} {v[1]} {v[2]}\n")
-            
-            indices = [
-                (1,2,3,4), (5,8,7,6), (1,5,6,2), (4,3,7,8), (1,4,8,5), (2,6,7,3)
-            ]
-            for face in indices:
-                v1, v2, v3, v4 = [i + v_start - 1 for i in face]
-                f.write(f"f {v1} {v2} {v3} {v4}\n")
-            return v_start + 8
-
-        v_idx = 1
-        # Boots
-        v_idx = write_box(-0.25, 0, 0, 0.2, 0.3, 0.3, v_idx)
-        v_idx = write_box(0.25, 0, 0, 0.2, 0.3, 0.3, v_idx)
-        # Legs
-        v_idx = write_box(-0.25, 0.3, 0, 0.18, 0.7, 0.18, v_idx)
-        v_idx = write_box(0.25, 0.3, 0, 0.18, 0.7, 0.18, v_idx)
-        # Belt
-        v_idx = write_box(0, 1.0, 0, 0.6, 0.1, 0.3, v_idx)
-        # Torso
-        v_idx = write_box(0, 1.1, 0, 0.55, 0.7, 0.25, v_idx)
-        # Shoulders
-        v_idx = write_box(-0.35, 1.6, 0, 0.2, 0.2, 0.2, v_idx)
-        v_idx = write_box(0.35, 1.6, 0, 0.2, 0.2, 0.2, v_idx)
-        # Arms
-        v_idx = write_box(-0.35, 1.1, 0, 0.15, 0.5, 0.15, v_idx)
-        v_idx = write_box(0.35, 1.1, 0, 0.15, 0.5, 0.15, v_idx)
-        # Hands
-        v_idx = write_box(-0.35, 0.9, 0, 0.15, 0.2, 0.15, v_idx)
-        v_idx = write_box(0.35, 0.9, 0, 0.15, 0.2, 0.15, v_idx)
-        # Neck
-        v_idx = write_box(0, 1.8, 0, 0.15, 0.1, 0.15, v_idx)
-        # Head
-        v_idx = write_box(0, 1.9, 0, 0.3, 0.35, 0.3, v_idx)
-        # Hat (Brim)
-        v_idx = write_box(0, 2.15, 0, 0.6, 0.05, 0.6, v_idx)
-        # Hat (Top)
-        v_idx = write_box(0, 2.2, 0, 0.3, 0.2, 0.3, v_idx)
-        # Backpack
-        v_idx = write_box(0, 1.2, -0.2, 0.4, 0.5, 0.2, v_idx)
-
 def create_obj_ground(filename):
     with open(filename, 'w') as f:
         f.write("# Tiled Ground Plane\n")
@@ -142,147 +538,21 @@ def create_obj_ground(filename):
         # Faces
         for z in range(tiles):
             for x in range(tiles):
-                # Indices (1-based)
-                # Top-Left: z * (tiles+1) + x + 1
-                # Top-Right: z * (tiles+1) + (x+1) + 1
-                # Bot-Left: (z+1) * (tiles+1) + x + 1
-                # Bot-Right: (z+1) * (tiles+1) + (x+1) + 1
-                
                 tl = z * (tiles + 1) + x + 1
                 tr = tl + 1
                 bl = (z + 1) * (tiles + 1) + x + 1
                 br = bl + 1
-                
-                # Use same index for v and vt, normal is 1
                 f.write(f"f {tl}/{tl}/1 {bl}/{bl}/1 {br}/{br}/1 {tr}/{tr}/1\n")
-
-import math
-
-def create_wav(filename, freq=440.0, duration=0.5):
-    sample_rate = 44100
-    num_samples = int(sample_rate * duration)
     
-    # WAV Header
-    header = bytearray()
-    header += b'RIFF'
-    header += struct.pack('<I', 36 + num_samples * 2)
-    header += b'WAVEfmt '
-    header += struct.pack('<I', 16)
-    header += struct.pack('<H', 1)
-    header += struct.pack('<H', 1)
-    header += struct.pack('<I', sample_rate)
-    header += struct.pack('<I', sample_rate * 2)
-    header += struct.pack('<H', 2)
-    header += struct.pack('<H', 16)
-    header += b'data'
-    header += struct.pack('<I', num_samples * 2)
+    create_obj_cube("assets/pillar.obj")
+    create_obj_tree("assets/tree.obj")
+    create_obj_cube("assets/rock.obj")
+    create_obj_ground("assets/ground.obj")
     
-    with open(filename, 'wb') as f:
-        f.write(header)
-        for i in range(num_samples):
-            t = float(i) / sample_rate
-            # Simple sine wave with decay
-            value = 32767.0 * math.sin(2.0 * math.pi * freq * t) * (1.0 - t/duration)
-            # Clamp to valid range
-            value = max(-32767, min(32767, int(value)))
-            f.write(struct.pack('<h', value))
-
-def create_background_music(filename, duration=60.0):
-    """Create professional-quality game background music"""
-    sample_rate = 44100
-    num_samples = int(sample_rate * duration)
+    print("\n[3/4] GENERATING SOUND EFFECTS")
+    print("-" * 60)
     
-    # WAV Header
-    header = bytearray()
-    header += b'RIFF'
-    header += struct.pack('<I', 36 + num_samples * 2)
-    header += b'WAVEfmt '
-    header += struct.pack('<I', 16)
-    header += struct.pack('<H', 1)
-    header += struct.pack('<H', 1)
-    header += struct.pack('<I', sample_rate)
-    header += struct.pack('<I', sample_rate * 2)
-    header += struct.pack('<H', 2)
-    header += struct.pack('<H', 16)
-    header += b'data'
-    header += struct.pack('<I', num_samples * 2)
-    
-    # Musical notes (frequencies in Hz)
-    # C major scale
-    notes = {
-        'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'F4': 349.23,
-        'G4': 392.00, 'A4': 440.00, 'B4': 493.88, 'C5': 523.25,
-        'D5': 587.33, 'E5': 659.25, 'F5': 698.46, 'G5': 783.99
-    }
-    
-    # Melody pattern (adventure game style)
-    melody = ['C5', 'E5', 'G5', 'E5', 'D5', 'F5', 'E5', 'C5',
-              'G4', 'C5', 'E5', 'D5', 'C5', 'G4', 'A4', 'C5']
-    
-    # Bass pattern
-    bass = ['C4', 'C4', 'G4', 'G4', 'F4', 'F4', 'C4', 'C4']
-    
-    with open(filename, 'wb') as f:
-        f.write(header)
-        
-        beat_duration = 0.5  # Half second per beat
-        samples_per_beat = int(sample_rate * beat_duration)
-        
-        for i in range(num_samples):
-            t = float(i) / sample_rate
-            
-            # Determine which beat we're on
-            beat = int(t / beat_duration)
-            melody_note = melody[beat % len(melody)]
-            bass_note = bass[(beat // 2) % len(bass)]
-            
-            # Time within current beat for envelope
-            beat_t = (t % beat_duration) / beat_duration
-            
-            # Envelope (fade in/out for each note)
-            envelope = math.sin(beat_t * math.pi)
-            
-            # Melody (higher octave, softer)
-            melody_freq = notes[melody_note]
-            melody_val = 8000 * math.sin(2.0 * math.pi * melody_freq * t) * envelope
-            
-            # Harmony (third above melody)
-            harmony_val = 4000 * math.sin(2.0 * math.pi * melody_freq * 1.25 * t) * envelope
-            
-            # Bass (lower, sustained)
-            bass_freq = notes[bass_note]
-            bass_val = 6000 * math.sin(2.0 * math.pi * bass_freq * t)
-            
-            # Subtle pad (sustained chords)
-            pad_val = 2000 * math.sin(2.0 * math.pi * melody_freq * 0.5 * t)
-            
-            # Mix all layers
-            value = melody_val + harmony_val + bass_val + pad_val
-            value = max(-32767, min(32767, int(value)))
-            f.write(struct.pack('<h', value))
-
-if __name__ == "__main__":
-    if not os.path.exists("assets"):
-        os.makedirs("assets")
-        
-    if not os.path.exists("assets/wall.bmp"):
-        create_bmp("assets/wall.bmp", 256, 256, "bricks")
-    if not os.path.exists("assets/ground.bmp"):
-        create_bmp("assets/ground.bmp", 512, 512, "noise") # Better ground texture
-    
-    if not os.path.exists("assets/pillar.obj"):
-        create_obj_cube("assets/pillar.obj")
-    if not os.path.exists("assets/tree.obj"):
-        create_obj_tree("assets/tree.obj")
-    if not os.path.exists("assets/rock.obj"):
-        create_obj_cube("assets/rock.obj")
-    if not os.path.exists("assets/player.obj"):
-        create_obj_humanoid("assets/player.obj")
-    if not os.path.exists("assets/ground.obj"):
-        create_obj_ground("assets/ground.obj")
-    
-    # Sound definitions: (filename, frequency, duration)
-    sound_data = [
+    sound_list = [
         ("collect.wav", 880.0, 0.3),
         ("chest.wav", 440.0, 0.5),
         ("crack.wav", 150.0, 0.2),
@@ -294,47 +564,30 @@ if __name__ == "__main__":
         ("growl.wav", 100.0, 0.8)
     ]
     
-    for s, freq, dur in sound_data:
-        # Always regenerate sounds to ensure they work
-        create_wav(f"assets/{s}", freq, dur)
+    for sound_name, freq, dur in sound_list:
+        create_wav(f"assets/{sound_name}", freq, dur)
+        print(f"  ✓ {sound_name}")
     
-    # Generate background music (longer, multi-tone)
-    print("Generating background music...")
-    create_background_music("assets/background.wav")
-        
-    print("Assets generated successfully.")
-
-def create_background_music(filename, duration=30.0):
-    """Create a simple background music loop"""
-    sample_rate = 44100
-    num_samples = int(sample_rate * duration)
+    print("\n[4/4] GENERATING BACKGROUND MUSIC")
+    print("-" * 60)
+    create_background_music("assets/background.wav", duration=30.0)
     
-    # WAV Header
-    header = bytearray()
-    header += b'RIFF'
-    header += struct.pack('<I', 36 + num_samples * 2)
-    header += b'WAVEfmt '
-    header += struct.pack('<I', 16)
-    header += struct.pack('<H', 1)
-    header += struct.pack('<H', 1)
-    header += struct.pack('<I', sample_rate)
-    header += struct.pack('<I', sample_rate * 2)
-    header += struct.pack('<H', 2)
-    header += struct.pack('<H', 16)
-    header += b'data'
-    header += struct.pack('<I', num_samples * 2)
-    
-    with open(filename, 'wb') as f:
-        f.write(header)
-        # Simple chord progression
-        freqs = [440.0, 554.37, 659.25, 523.25]  # A, C#, E, C
-        for i in range(num_samples):
-            t = float(i) / sample_rate
-            # Mix multiple frequencies for richer sound
-            chord_idx = int((t / duration) * len(freqs)) % len(freqs)
-            freq = freqs[chord_idx]
-            value = 0
-            value += 16000 * math.sin(2.0 * math.pi * freq * t)
-            value += 8000 * math.sin(2.0 * math.pi * freq * 2 * t)
-            value += 4000 * math.sin(2.0 * math.pi * freq * 0.5 * t)
-            f.write(struct.pack('<h', int(value)))
+    print("\n" + "=" * 60)
+    print("✅ ASSET GENERATION COMPLETE!")
+    print("=" * 60)
+    print("\nGenerated Assets:")
+    print("  📁 Textures:")
+    print("     • sand_ground.bmp (Professional sand texture)")
+    print("     • snow_ground.bmp (Professional snow texture)")
+    print("     • sandstone_wall.bmp (Desert walls)")
+    print("     • ice_wall.bmp (Ice cave walls)")
+    print("\n  📁 3D Models:")
+    print("     • player.obj (Detailed adventurer)")
+    print("     • pyramid.obj (Egyptian pyramid)")
+    print("     • cactus.obj (Desert cactus)")
+    print("     • pillar.obj, tree.obj, rock.obj, ground.obj")
+    print("\n  📁 Audio:")
+    print("     • 9 sound effects + background music")
+    print("\n" + "=" * 60)
+    print("Ready for professional gameplay! 🎮")
+    print("=" * 60)

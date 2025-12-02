@@ -4,7 +4,6 @@
 
 #include "player.h"
 #include "utils.h"
-#include <algorithm> // For std::max, std::min if needed
 
 // Helper if utils.h clamp is not found
 #ifndef CLAMP_DEFINED
@@ -46,6 +45,8 @@ Player::Player(float startX, float startY, float startZ) {
   bobAmount = 0.1f;
 
   damageCooldown = 0.0f;
+  damageFlashTimer = 0.0f;
+  alive = true;
 
   playerModel = new Model();
   // Try to load, will fail silently if file missing
@@ -82,6 +83,11 @@ void Player::update(float deltaTime) {
   // Update damage cooldown
   if (damageCooldown > 0.0f) {
     damageCooldown -= deltaTime;
+  }
+
+  // Update damage flash timer
+  if (damageFlashTimer > 0.0f) {
+    damageFlashTimer -= deltaTime;
   }
 }
 
@@ -131,9 +137,12 @@ void Player::takeDamage(int amount) {
   if (damageCooldown <= 0.0f) {
     health -= amount;
     playSound(SOUND_DAMAGE); // Play damage sound
-    if (health < 0)
+    if (health <= 0) {
       health = 0;
-    damageCooldown = 1.0f; // 1 second invincibility
+      alive = false;
+    }
+    damageCooldown = 1.0f;   // 1 second invincibility
+    damageFlashTimer = 0.3f; // Flash red for 0.3 seconds
   }
 }
 
@@ -148,8 +157,10 @@ void Player::reset() {
   isJumping = false;
   isGrounded = true;
   health = maxHealth;
+  alive = true;
   orbsCollected = 0;
   damageCooldown = 0.0f;
+  damageFlashTimer = 0.0f;
 }
 
 void Player::resetPosition(float newX, float newY, float newZ) {

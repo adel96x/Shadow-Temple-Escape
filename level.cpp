@@ -37,6 +37,10 @@ Level::~Level() {
     delete treeModel;
   if (rockModel)
     delete rockModel;
+  if (groundModel)
+    delete groundModel;
+  if (cactusModel)
+    delete cactusModel;
 }
 
 void Level::loadCommonAssets() {
@@ -56,22 +60,35 @@ void Level::loadCommonAssets() {
     printf("Failed to load ground model\n");
   }
 
+  cactusModel = new Model();
+
+  pillarModel->load("assets/pillar.obj");
+  treeModel->load("assets/tree.obj");
+  rockModel->load("assets/rock.obj");
+  groundModel->load("assets/ground.obj");
+  cactusModel->load("assets/cactus.obj");
+
   // Load textures
   wallTexture = loadBMP("assets/wall.bmp");
   groundTexture = loadBMP("assets/ground.bmp");
 }
 
-void Level::renderGround(float size, float r, float g, float b) {
-  glDisable(GL_TEXTURE_2D); // Disable textures for solid color
+void Level::renderGround(float size, Texture &texture) {
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture.id);
   glEnable(GL_LIGHTING);
-  glColor3f(r, g, b);
+  glColor3f(1.0f, 1.0f, 1.0f); // White to show texture colors
 
   // Always use simple quad (no model) for smooth ground
   glBegin(GL_QUADS);
   glNormal3f(0, 1, 0);
+  glTexCoord2f(0, 0);
   glVertex3f(-size, 0, -size);
+  glTexCoord2f(10, 0);
   glVertex3f(size, 0, -size);
+  glTexCoord2f(10, 10);
   glVertex3f(size, 0, size);
+  glTexCoord2f(0, 10);
   glVertex3f(-size, 0, size);
   glEnd();
 }
@@ -116,16 +133,12 @@ void Level::renderSkybox(float r, float g, float b) {
   glEnable(GL_LIGHTING);
 }
 
-void Level::renderWalls(float size, float height) {
+void Level::renderWalls(float size, float height, Texture &texture) {
   glEnable(GL_LIGHTING);
   glEnable(GL_TEXTURE_2D);
-  glBindTexture(GL_TEXTURE_2D, wallTexture.id);
+  glBindTexture(GL_TEXTURE_2D, texture.id);
 
-  if (wallTexture.id == 0) {
-    glDisable(GL_TEXTURE_2D);
-  }
-
-  glColor3f(0.6f, 0.5f, 0.4f);
+  glColor3f(1.0f, 1.0f, 1.0f);
 
   float thickness = 1.0f;
 
@@ -193,6 +206,10 @@ void DesertLevel::init(Player *p) {
   portal = new Portal(0, 1, -40);
 
   loadCommonAssets();
+
+  // Load desert textures
+  sandTexture = loadBMP("assets/sand_ground.bmp");
+  desertWallTexture = loadBMP("assets/sandstone_wall.bmp");
 }
 
 void DesertLevel::spawnOrbs() {
@@ -248,10 +265,11 @@ void DesertLevel::spawnObstacles() {
   obstacles.push_back(new Obstacle(30, 0, 10, 1.5f, 8, 1.5f, TREE));
   obstacles.push_back(new Obstacle(-25, 0, -15, 1.5f, 8, 1.5f, TREE));
 
-  // Rocks (Armadillo) - Increased size for collision to match 3x visual scale
-  obstacles.push_back(new Obstacle(5, 0, -20, 5, 5, 5, ROCK));
-  obstacles.push_back(new Obstacle(-20, 0, 5, 5, 5, 5, ROCK));
-
+  // Cacti - cylindrical collision
+  obstacles.push_back(new Obstacle(10, 0, -15, 1, 4, 1, CACTUS));
+  obstacles.push_back(new Obstacle(-5, 0, 25, 1, 4, 1, CACTUS));
+  obstacles.push_back(new Obstacle(20, 0, 15, 1, 4, 1, CACTUS));
+  obstacles.push_back(new Obstacle(-30, 0, -5, 1, 4, 1, CACTUS));
   // Add walls as obstacles for collision
   float wallSize = 45.0f;
   float wallThickness = 2.0f;
@@ -292,7 +310,7 @@ void DesertLevel::update(float deltaTime) {
   for (auto obs : obstacles) {
     if (obs->type == WALL || obs->type == PILLAR || obs->type == ICE_PILLAR ||
         obs->type == ROCK) {
-      // Use Box collision for walls, pillars, and rocks
+      // Use Box collision for walls, pillars, rocks, and ice pillars
       if (player->checkCollisionWithBox(obs->x, obs->z, obs->width,
                                         obs->depth)) {
         player->resolveCollisionWithBox(obs->x, obs->z, obs->width, obs->depth);
@@ -393,7 +411,22 @@ void DesertLevel::updateEnemies(float deltaTime) {
 void DesertLevel::checkEnemyCollision() {
   for (auto enemy : enemies) {
     if (player->checkCollision(enemy->x, enemy->z, enemy->radius)) {
-      player->takeDamage(15);
+      if (player->canTakeDamage()) {
+        player->takeDamage(15);
+        // Trigger enemy reaction
+        enemy->isHit = true;
+        enemy->hitTimer = 0.5f;   // React for 0.5 seconds
+        enemy->recoilDist = 1.5f; // Move back
+
+        // Push enemy back
+        float dx = enemy->x - player->getX();
+        float dz = enemy->z - player->getZ();
+        float dist = sqrt(dx * dx + dz * dz);
+        if (dist > 0) {
+          enemy->x += (dx / dist) * 2.0f;
+          enemy->z += (dz / dist) * 2.0f;
+        }
+      }
       player->resolveCollision(enemy->x, enemy->z, enemy->radius + 1.0f);
     }
   }
@@ -463,6 +496,8 @@ void DesertLevel::render() {
       renderPalmTree(obs->x, obs->y, obs->z);
     else if (obs->type == ROCK)
       renderRock(obs->x, obs->y, obs->z);
+    else if (obs->type == CACTUS)
+      renderCactus(obs->x, obs->y, obs->z);
   }
 
   // Render spike traps
@@ -493,15 +528,16 @@ void DesertLevel::render() {
 }
 
 void DesertLevel::renderDesertEnvironment() {
-  // Sand color (tan/beige)
-  renderGround(50, 0.76f, 0.70f, 0.50f);
+  // Render professional sand ground
+  renderGround(50, sandTexture);
 
   float skyR = 0.53f + 0.2f * sin(timeOfDay);
   float skyG = 0.81f + 0.1f * sin(timeOfDay);
   float skyB = 0.92f;
   renderSkybox(skyR, skyG, skyB);
 
-  renderWalls(45, 8);
+  // Render sandstone walls
+  renderWalls(45, 8, desertWallTexture);
 }
 
 void DesertLevel::renderPillar(float x, float y, float z) {
@@ -551,6 +587,22 @@ void DesertLevel::renderPalmTree(float x, float y, float z) {
       glPopMatrix();
     }
     gluDeleteQuadric(quad);
+  }
+  glPopMatrix();
+}
+
+void DesertLevel::renderCactus(float x, float y, float z) {
+  glPushMatrix();
+  glTranslatef(x, y, z);
+
+  if (cactusModel && cactusModel->getWidth() > 0) {
+    glScalef(1.5f, 1.5f, 1.5f);
+    cactusModel->render();
+  } else {
+    // Fallback
+    glColor3f(0.2f, 0.6f, 0.2f);
+    glScalef(0.5f, 2.0f, 0.5f);
+    glutSolidCube(1.0f);
   }
   glPopMatrix();
 }
@@ -668,10 +720,11 @@ void IceLevel::init(Player *p) {
   levelComplete = false;
   survivalTimer = 0.0f;
 
+  // Cold blue lighting
   sunLight.position = {0, 50, 0, 1};
-  sunLight.ambient = {0.2f, 0.2f, 0.3f, 1.0f};
-  sunLight.diffuse = {0.4f, 0.5f, 0.7f, 1.0f};
-  sunLight.specular = {0.8f, 0.8f, 1.0f, 1.0f};
+  sunLight.ambient = {0.3f, 0.35f, 0.4f, 1.0f}; // Cool ambient
+  sunLight.diffuse = {0.6f, 0.7f, 0.9f, 1.0f};  // Blue-tinted light
+  sunLight.specular = {0.9f, 0.95f, 1.0f, 1.0f};
 
   spawnEnemies();
   spawnObstacles();
@@ -679,6 +732,10 @@ void IceLevel::init(Player *p) {
   portal = new Portal(0, 1, -35);
 
   loadCommonAssets();
+
+  // Load ice-specific textures
+  snowTexture = loadBMP("assets/snow.bmp");
+  iceWallTexture = loadBMP("assets/ice_wall.bmp");
 }
 
 void IceLevel::spawnEnemies() {
@@ -786,6 +843,14 @@ void IceLevel::updateIcicles(float deltaTime) {
 
 void IceLevel::updateEnemies(float deltaTime) {
   for (auto enemy : enemies) {
+    // Handle hit reaction
+    if (enemy->isHit) {
+      enemy->hitTimer -= deltaTime;
+      if (enemy->hitTimer <= 0) {
+        enemy->isHit = false;
+      }
+    }
+
     if (enemy->patrolPoints.empty())
       continue;
 
@@ -798,9 +863,11 @@ void IceLevel::updateEnemies(float deltaTime) {
       enemy->patrolIndex =
           (enemy->patrolIndex + 1) % enemy->patrolPoints.size();
     } else {
-      enemy->x += (dx / dist) * enemy->speed * deltaTime;
-      enemy->z += (dz / dist) * enemy->speed * deltaTime;
-      enemy->rotation = atan2(dx, dz) * 180.0f / PI;
+      if (!enemy->isHit) { // Only move if not hit
+        enemy->x += (dx / dist) * enemy->speed * deltaTime;
+        enemy->z += (dz / dist) * enemy->speed * deltaTime;
+        enemy->rotation = atan2(dx, dz) * 180.0f / PI;
+      }
     }
   }
 }
@@ -808,7 +875,21 @@ void IceLevel::updateEnemies(float deltaTime) {
 void IceLevel::checkEnemyCollision() {
   for (auto enemy : enemies) {
     if (player->checkCollision(enemy->x, enemy->z, enemy->radius)) {
-      player->takeDamage(20);
+      if (player->canTakeDamage()) {
+        player->takeDamage(20);
+        // Trigger enemy reaction
+        enemy->isHit = true;
+        enemy->hitTimer = 0.5f;
+
+        // Push enemy back
+        float dx = enemy->x - player->getX();
+        float dz = enemy->z - player->getZ();
+        float dist = sqrt(dx * dx + dz * dz);
+        if (dist > 0) {
+          enemy->x += (dx / dist) * 2.0f;
+          enemy->z += (dz / dist) * 2.0f;
+        }
+      }
       player->resolveCollision(enemy->x, enemy->z, enemy->radius + 1.5f);
     }
   }
@@ -828,45 +909,6 @@ void IceLevel::reset() {
   for (auto trap : traps)
     delete trap;
   traps.clear();
-}
-
-void IceLevel::render() {
-  glEnable(GL_LIGHT0);
-  glLightfv(GL_LIGHT0, GL_POSITION, sunLight.position.data());
-  glLightfv(GL_LIGHT0, GL_AMBIENT, sunLight.ambient.data());
-  glLightfv(GL_LIGHT0, GL_DIFFUSE, sunLight.diffuse.data());
-  glLightfv(GL_LIGHT0, GL_SPECULAR, sunLight.specular.data());
-
-  renderIceEnvironment();
-
-  for (auto obs : obstacles) {
-    renderIcePillar(obs->x, obs->y, obs->z);
-  }
-
-  for (auto enemy : enemies) {
-    renderIceElemental(enemy);
-  }
-
-  for (auto icicle : traps) {
-    if (icicle->showWarning) {
-      renderWarningCircle(icicle->x, icicle->z, icicle->radius);
-    } else {
-      renderIcicle(icicle);
-    }
-  }
-
-  if (portal)
-    renderPortal();
-  renderTimer3D();
-}
-
-void IceLevel::renderIceEnvironment() {
-  // Sand color (same as desert)
-  renderGround(50, 0.76f, 0.70f, 0.50f);
-  renderSkybox(0.4f, 0.5f, 0.7f);
-
-  glColor3f(0.6f, 0.7f, 0.8f);
-  renderWalls(45, 8);
 }
 
 void IceLevel::renderIcePillar(float x, float y, float z) {
@@ -1057,4 +1099,45 @@ void IceLevel::renderTimer3D() {
 
   glPopMatrix();
   glEnable(GL_LIGHTING);
+}
+
+void IceLevel::render() {
+  glEnable(GL_LIGHT0);
+  glLightfv(GL_LIGHT0, GL_POSITION, sunLight.position.data());
+  glLightfv(GL_LIGHT0, GL_AMBIENT, sunLight.ambient.data());
+  glLightfv(GL_LIGHT0, GL_DIFFUSE, sunLight.diffuse.data());
+  glLightfv(GL_LIGHT0, GL_SPECULAR, sunLight.specular.data());
+
+  renderIceEnvironment();
+
+  for (auto obs : obstacles) {
+    renderIcePillar(obs->x, obs->y, obs->z);
+  }
+
+  for (auto enemy : enemies) {
+    renderIceElemental(enemy);
+  }
+
+  for (auto icicle : traps) {
+    if (icicle->showWarning) {
+      renderWarningCircle(icicle->x, icicle->z, icicle->radius);
+    } else {
+      renderIcicle(icicle);
+    }
+  }
+
+  if (portal)
+    renderPortal();
+  renderTimer3D();
+}
+
+void IceLevel::renderIceEnvironment() {
+  // Render professional snow ground
+  renderGround(50, snowTexture);
+
+  // Cold blue sky
+  renderSkybox(0.6f, 0.7f, 0.85f);
+
+  // Icy blue walls
+  renderWalls(45, 8, iceWallTexture);
 }

@@ -1,6 +1,5 @@
 // ============================================================================
-// Level.h - Level System (Both Desert and Ice Levels)
-// Includes all entities: collectibles, enemies, traps, portals
+// Level.h - Enhanced Level System with Professional Assets
 // ============================================================================
 
 #ifndef LEVEL_H
@@ -41,9 +40,13 @@ struct Enemy {
   std::vector<Vec3> patrolPoints;
   float radius;
 
+  bool isHit;
+  float hitTimer;
+  float recoilDist;
+
   Enemy(float px, float py, float pz)
       : x(px), y(py), z(pz), rotation(0), speed(2.0f), patrolIndex(0),
-        radius(0.7f) {}
+        radius(0.7f), isHit(false), hitTimer(0), recoilDist(0) {}
 };
 
 struct Trap {
@@ -117,7 +120,8 @@ protected:
   Model *pillarModel;
   Model *treeModel;
   Model *rockModel;
-  Model *groundModel; // New ground model
+  Model *groundModel;
+  Model *cactusModel; // NEW
 
 public:
   Level();
@@ -132,16 +136,16 @@ public:
 
   bool isComplete() const { return levelComplete; }
 
-  // Common render helpers
-  void renderGround(float size, float r, float g, float b);
+  // Common render helpers - UPDATED SIGNATURES
+  void renderGround(float size, Texture &texture);
   void renderSkybox(float r, float g, float b);
-  void renderWalls(float size, float height);
+  void renderWalls(float size, float height, Texture &texture);
 
   void loadCommonAssets();
 };
 
 // ============================================================================
-// DESERT LEVEL (Level 1)
+// DESERT LEVEL (Level 1) - Enhanced
 // ============================================================================
 
 class DesertLevel : public Level {
@@ -152,6 +156,10 @@ private:
   // Day/night cycle
   float timeOfDay;
   float daySpeed;
+
+  // Desert-specific textures
+  Texture sandTexture;
+  Texture desertWallTexture;
 
 public:
   DesertLevel();
@@ -180,6 +188,7 @@ private:
   void renderDesertEnvironment();
   void renderPillar(float x, float y, float z);
   void renderPalmTree(float x, float y, float z);
+  void renderCactus(float x, float y, float z); // NEW
   void renderRock(float x, float y, float z);
   void renderOrb(Collectible *orb);
   void renderChest(Chest *chest);
@@ -188,7 +197,7 @@ private:
 };
 
 // ============================================================================
-// ICE LEVEL (Level 2)
+// ICE LEVEL (Level 2) - Enhanced
 // ============================================================================
 
 class IceLevel : public Level {
@@ -197,6 +206,10 @@ private:
   float maxTime;
   float icicleSpawnTimer;
   float icicleSpawnInterval;
+
+  // Ice-specific textures
+  Texture snowTexture;
+  Texture iceWallTexture;
 
 public:
   IceLevel();

@@ -257,74 +257,136 @@ void renderMenu() {
 }
 
 void renderHUD() {
+  // Setup 2D projection
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  gluOrtho2D(0, WINDOW_WIDTH, 0, WINDOW_HEIGHT);
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadIdentity();
+  glDisable(GL_LIGHTING);
+  glDisable(GL_DEPTH_TEST);
+
   char buffer[64];
 
-  if (currentState == LEVEL1) {
-    DesertLevel *desert = (DesertLevel *)currentLevel;
-    sprintf(buffer, "Orbs: %d / %d", player->getOrbsCollected(),
-            desert->getTotalOrbs());
-    renderText(20, WINDOW_HEIGHT - 30, buffer);
-  } else if (currentState == LEVEL2) {
-    IceLevel *ice = (IceLevel *)currentLevel;
-    float timeLeft = ice->getTimeRemaining();
-    sprintf(buffer, "Time: %.1f", timeLeft);
-
-    // Color based on time
-    if (timeLeft < 10.0f)
-      glColor3f(1.0f, 0.0f, 0.0f);
-    else if (timeLeft < 20.0f)
-      glColor3f(1.0f, 0.5f, 0.0f);
-    else
-      glColor3f(1.0f, 1.0f, 1.0f);
-
-    renderText(20, WINDOW_HEIGHT - 30, buffer);
-  }
-
-  // Health Bar
-  float healthPercent = (float)player->getHealth() / 100.0f;
-
-  // Background
-  glColor3f(0.3f, 0.3f, 0.3f);
+  // --- Top Left: Level Info ---
+  // Background box
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glColor4f(0.0f, 0.0f, 0.0f, 0.5f);
   glBegin(GL_QUADS);
-  glVertex2f(20, WINDOW_HEIGHT - 60);
-  glVertex2f(220, WINDOW_HEIGHT - 60);
-  glVertex2f(220, WINDOW_HEIGHT - 40);
-  glVertex2f(20, WINDOW_HEIGHT - 40);
+  glVertex2f(10, WINDOW_HEIGHT - 10);
+  glVertex2f(250, WINDOW_HEIGHT - 10);
+  glVertex2f(250, WINDOW_HEIGHT - 80);
+  glVertex2f(10, WINDOW_HEIGHT - 80);
   glEnd();
-
-  // Foreground
-  if (healthPercent > 0.5f)
-    glColor3f(0.0f, 1.0f, 0.0f);
-  else if (healthPercent > 0.2f)
-    glColor3f(1.0f, 0.5f, 0.0f);
-  else
-    glColor3f(1.0f, 0.0f, 0.0f);
-
-  glBegin(GL_QUADS);
-  glVertex2f(20, WINDOW_HEIGHT - 60);
-  glVertex2f(20 + 200 * healthPercent, WINDOW_HEIGHT - 60);
-  glVertex2f(20 + 200 * healthPercent, WINDOW_HEIGHT - 40);
-  glVertex2f(20, WINDOW_HEIGHT - 40);
-  glEnd();
+  glDisable(GL_BLEND);
 
   // Border
   glColor3f(1.0f, 1.0f, 1.0f);
   glLineWidth(2.0f);
   glBegin(GL_LINE_LOOP);
-  glVertex2f(20, WINDOW_HEIGHT - 60);
-  glVertex2f(220, WINDOW_HEIGHT - 60);
-  glVertex2f(220, WINDOW_HEIGHT - 40);
-  glVertex2f(20, WINDOW_HEIGHT - 40);
+  glVertex2f(10, WINDOW_HEIGHT - 10);
+  glVertex2f(250, WINDOW_HEIGHT - 10);
+  glVertex2f(250, WINDOW_HEIGHT - 80);
+  glVertex2f(10, WINDOW_HEIGHT - 80);
   glEnd();
-  glLineWidth(1.0f);
 
-  sprintf(buffer, "Health: %d%%", player->getHealth());
-  renderText(230, WINDOW_HEIGHT - 55, buffer);
+  // Text
+  glColor3f(1.0f, 1.0f, 1.0f);
+  if (currentState == LEVEL1) {
+    DesertLevel *desert = (DesertLevel *)currentLevel;
+    renderText(20, WINDOW_HEIGHT - 35, "Level 1: Desert Temple");
+    sprintf(buffer, "Orbs: %d / %d", player->getOrbsCollected(),
+            desert->getTotalOrbs());
+    glColor3f(1.0f, 0.84f, 0.0f); // Gold
+    renderText(20, WINDOW_HEIGHT - 60, buffer);
+  } else if (currentState == LEVEL2) {
+    IceLevel *ice = (IceLevel *)currentLevel;
+    renderText(20, WINDOW_HEIGHT - 35, "Level 2: Ice Cave");
+    float timeLeft = ice->getTimeRemaining();
+    sprintf(buffer, "Time: %.1f", timeLeft);
 
-  // Camera mode
-  renderText(WINDOW_WIDTH - 200, WINDOW_HEIGHT - 30,
-             camera->getMode() == FIRST_PERSON ? "Camera: First Person"
-                                               : "Camera: Third Person");
+    if (timeLeft < 10.0f)
+      glColor3f(1.0f, 0.2f, 0.2f);
+    else if (timeLeft < 20.0f)
+      glColor3f(1.0f, 0.6f, 0.0f);
+    else
+      glColor3f(0.6f, 0.8f, 1.0f);
+
+    renderText(20, WINDOW_HEIGHT - 60, buffer);
+  }
+
+  // --- Bottom Left: Health Bar ---
+  float healthPercent = (float)player->getHealth() / 100.0f;
+
+  // Bar Background
+  glColor4f(0.2f, 0.2f, 0.2f, 0.8f);
+  glBegin(GL_QUADS);
+  glVertex2f(20, 20);
+  glVertex2f(220, 20);
+  glVertex2f(220, 50);
+  glVertex2f(20, 50);
+  glEnd();
+
+  // Health Fill
+  if (healthPercent > 0.5f)
+    glColor3f(0.2f, 0.8f, 0.2f);
+  else if (healthPercent > 0.2f)
+    glColor3f(0.9f, 0.6f, 0.1f);
+  else
+    glColor3f(0.9f, 0.1f, 0.1f);
+
+  glBegin(GL_QUADS);
+  glVertex2f(22, 22);
+  glVertex2f(22 + 196 * healthPercent, 22);
+  glVertex2f(22 + 196 * healthPercent, 48);
+  glVertex2f(22, 48);
+  glEnd();
+
+  // Bar Border
+  glColor3f(0.8f, 0.8f, 0.8f);
+  glLineWidth(2.0f);
+  glBegin(GL_LINE_LOOP);
+  glVertex2f(20, 20);
+  glVertex2f(220, 20);
+  glVertex2f(220, 50);
+  glVertex2f(20, 50);
+  glEnd();
+
+  sprintf(buffer, "%d%%", player->getHealth());
+  glColor3f(1.0f, 1.0f, 1.0f);
+  renderText(230, 28, buffer);
+
+  // --- Top Right: Camera Mode ---
+  glColor3f(0.8f, 0.8f, 0.8f);
+  renderText(WINDOW_WIDTH - 220, WINDOW_HEIGHT - 30,
+             camera->getMode() == FIRST_PERSON ? "[C] First Person"
+                                               : "[C] Third Person");
+
+  // --- Damage Overlay (Red Flash) ---
+  float flash = player->getDamageFlashTimer();
+  if (flash > 0.0f) {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(1.0f, 0.0f, 0.0f, flash * 1.5f); // Fade out
+    glBegin(GL_QUADS);
+    glVertex2f(0, 0);
+    glVertex2f(WINDOW_WIDTH, 0);
+    glVertex2f(WINDOW_WIDTH, WINDOW_HEIGHT);
+    glVertex2f(0, WINDOW_HEIGHT);
+    glEnd();
+    glDisable(GL_BLEND);
+  }
+
+  // Restore state
+  glEnable(GL_DEPTH_TEST);
+  glEnable(GL_LIGHTING);
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glMatrixMode(GL_MODELVIEW);
 }
 
 void renderPaused() {
