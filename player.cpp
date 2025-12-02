@@ -230,7 +230,7 @@ void Player::render() {
   glPushMatrix();
   float bobOffset = sin(bobPhase) * bobAmount;
   glTranslatef(x, y + bobOffset, z);
-  glRotatef(yaw, 0, 1, 0); // Changed from -yaw to yaw to fix facing direction
+  glRotatef(-yaw, 0, 1, 0); // Negative yaw to match movement direction
 
   if (damageCooldown > 0.0f && ((int)(damageCooldown * 10) % 2 == 0))
     glColor3f(1.0f, 0.3f, 0.3f);
@@ -241,7 +241,7 @@ void Player::render() {
     glPushMatrix();
     glRotatef(90, 1, 0, 0);
     glScalef(0.1f, 0.1f, 0.1f);
-    glRotatef(180, 0, 1, 0); // Restored - needed for model orientation
+    glRotatef(180, 0, 1, 0);
     playerModel->render();
     glPopMatrix();
   } else {

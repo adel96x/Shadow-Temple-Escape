@@ -127,6 +127,7 @@ protected:
   static Model *christmasTreeModel;
   static Model *snakeModel;
   static Model *trapModel;
+  static Model *chestModel;
 
 public:
   static void cleanupCommonAssets();

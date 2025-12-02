@@ -19,6 +19,7 @@ Model *Level::snowmanModel = nullptr;
 Model *Level::christmasTreeModel = nullptr;
 Model *Level::snakeModel = nullptr;
 Model *Level::trapModel = nullptr;
+Model *Level::chestModel = nullptr;
 
 void Level::cleanupCommonAssets() {
   if (pillarModel) {
@@ -40,6 +41,10 @@ void Level::cleanupCommonAssets() {
   if (trapModel) {
     delete trapModel;
     trapModel = nullptr;
+  }
+  if (chestModel) {
+    delete chestModel;
+    chestModel = nullptr;
   }
 }
 
@@ -98,6 +103,10 @@ void Level::loadCommonAssets() {
   if (!trapModel) {
     trapModel = new Model();
     trapModel->load("assets/traps.obj");
+  }
+  if (!chestModel) {
+    chestModel = new Model();
+    chestModel->load("assets/chest.obj");
   }
 
   // Load non-static models
@@ -765,18 +774,28 @@ void DesertLevel::renderChest(Chest *chest) {
   glPushMatrix();
   glTranslatef(chest->x, chest->y, chest->z);
 
-  glColor3f(0.45f, 0.3f, 0.15f);
-  glScalef(1.5f, 1.0f, 1.0f);
-  glutSolidCube(1.0f);
+  if (chestModel && chestModel->getWidth() > 0) {
+    // Scale to appropriate size
+    glScalef(0.5f, 0.5f, 0.5f);
 
-  if (chest->opened && chest->lidAngle < 90) {
-    chest->lidAngle += 2.0f;
+    // Set color to brown/wood
+    glColor3f(0.6f, 0.4f, 0.2f);
+    chestModel->render();
+  } else {
+    // Fallback: primitive chest
+    glColor3f(0.45f, 0.3f, 0.15f);
+    glScalef(1.5f, 1.0f, 1.0f);
+    glutSolidCube(1.0f);
+
+    if (chest->opened && chest->lidAngle < 90) {
+      chest->lidAngle += 2.0f;
+    }
+    glTranslatef(0, 0.5f, -0.5f);
+    glRotatef(-chest->lidAngle, 1, 0, 0);
+    glTranslatef(0, 0, 0.5f);
+    glColor3f(0.5f, 0.35f, 0.2f);
+    glutSolidCube(1.0f);
   }
-  glTranslatef(0, 0.5f, -0.5f);
-  glRotatef(-chest->lidAngle, 1, 0, 0);
-  glTranslatef(0, 0, 0.5f);
-  glColor3f(0.5f, 0.35f, 0.2f);
-  glutSolidCube(1.0f);
 
   glPopMatrix();
 }
