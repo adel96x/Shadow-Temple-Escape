@@ -41,6 +41,8 @@ Level::~Level() {
     delete groundModel;
   if (cactusModel)
     delete cactusModel;
+  if (pyramidModel)
+    delete pyramidModel;
 }
 
 void Level::loadCommonAssets() {
@@ -61,12 +63,14 @@ void Level::loadCommonAssets() {
   }
 
   cactusModel = new Model();
+  pyramidModel = new Model();
 
   pillarModel->load("assets/pillar.obj");
   treeModel->load("assets/tree.obj");
   rockModel->load("assets/rock.obj");
   groundModel->load("assets/ground.obj");
   cactusModel->load("assets/cactus.obj");
+  pyramidModel->load("assets/pyramid.obj");
 
   // Load textures
   wallTexture = loadBMP("assets/wall.bmp");
@@ -270,6 +274,14 @@ void DesertLevel::spawnObstacles() {
   obstacles.push_back(new Obstacle(-5, 0, 25, 1, 4, 1, CACTUS));
   obstacles.push_back(new Obstacle(20, 0, 15, 1, 4, 1, CACTUS));
   obstacles.push_back(new Obstacle(-30, 0, -5, 1, 4, 1, CACTUS));
+
+  // Small realistic pyramids with SOLID collision - player CANNOT pass through
+  obstacles.push_back(
+      new Obstacle(-30, 0, 30, 6, 5, 6, PYRAMID)); // Small pyramid
+  obstacles.push_back(
+      new Obstacle(35, 0, -30, 7, 6, 7, PYRAMID)); // Medium pyramid
+  obstacles.push_back(
+      new Obstacle(15, 0, 25, 5, 4, 5, PYRAMID)); // Tiny pyramid
   // Add walls as obstacles for collision
   float wallSize = 45.0f;
   float wallThickness = 2.0f;
@@ -307,9 +319,10 @@ void DesertLevel::update(float deltaTime) {
   }
 
   // Check obstacle collisions
+  // Box collision for WALL, PILLAR, ROCK, PYRAMID (SOLID - cannot pass through)
   for (auto obs : obstacles) {
     if (obs->type == WALL || obs->type == PILLAR || obs->type == ICE_PILLAR ||
-        obs->type == ROCK) {
+        obs->type == ROCK || obs->type == PYRAMID) {
       // Use Box collision for walls, pillars, rocks, and ice pillars
       if (player->checkCollisionWithBox(obs->x, obs->z, obs->width,
                                         obs->depth)) {
@@ -498,6 +511,8 @@ void DesertLevel::render() {
       renderRock(obs->x, obs->y, obs->z);
     else if (obs->type == CACTUS)
       renderCactus(obs->x, obs->y, obs->z);
+    else if (obs->type == PYRAMID)
+      renderPyramid(obs->x, obs->y, obs->z, obs->width, obs->height);
   }
 
   // Render spike traps
@@ -596,13 +611,47 @@ void DesertLevel::renderCactus(float x, float y, float z) {
   glTranslatef(x, y, z);
 
   if (cactusModel && cactusModel->getWidth() > 0) {
-    glScalef(1.5f, 1.5f, 1.5f);
+
+    // Rotate cactus upright (90 degrees anticlockwise)
+    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f); // <<< rotation added here
+
+    // Your size scale
+    glScalef(0.1f, 0.1f, 0.1f);
+
     cactusModel->render();
   } else {
-    // Fallback
+    // Fallback cactus cube
     glColor3f(0.2f, 0.6f, 0.2f);
     glScalef(0.5f, 2.0f, 0.5f);
     glutSolidCube(1.0f);
+  }
+
+  glPopMatrix();
+}
+
+void DesertLevel::renderPyramid(float x, float y, float z, float baseSize,
+                                float height) {
+  glPushMatrix();
+  glTranslatef(x, y, z);
+
+  if (pyramidModel && pyramidModel->getWidth() > 0) {
+    // Scale to match the realistic size parameters
+    float scale = baseSize / 10.0f; // Original pyramid model is size 10
+    glScalef(scale, scale * height / 8.0f, scale);
+
+    // Realistic sandstone color with slight variation
+    glColor3f(0.87f, 0.72f, 0.53f); // Warm sandstone
+    pyramidModel->render();
+  } else {
+    // Fallback rendering with realistic Egyptian pyramid color
+    glColor3f(0.87f, 0.72f, 0.53f); // Warm sandstone color
+
+    // Enable lighting for better appearance
+    glEnable(GL_LIGHTING);
+
+    // Render as cone (pyramid approximation)
+    glRotatef(-90, 1, 0, 0);
+    glutSolidCone(baseSize / 2.0f, height, 4, 1);
   }
   glPopMatrix();
 }

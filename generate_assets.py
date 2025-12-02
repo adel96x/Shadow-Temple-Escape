@@ -279,26 +279,34 @@ def create_detailed_player(filename):
         v_idx = write_box(-0.35, 0.95, 0.15, 0.15, 0.15, 0.15, v_idx)
 
 def create_pyramid(filename):
-    """Create Egyptian-style pyramid"""
-    print(f"Generating pyramid model: {filename}")
+    """Create realistic Egyptian-style pyramid with detailed geometry"""
+    print(f"Generating realistic pyramid model: {filename}")
     
     with open(filename, 'w') as f:
-        f.write("# Pyramid\n")
-        f.write("# Base and apex for desert temple\n\n")
+        f.write("# Realistic Egyptian Pyramid\n")
+        f.write("# Base and apex with stepped detail\n\n")
         
         size = 10
         height = 8
         
-        # Base vertices (square)
+        # Base vertices (square) - slightly larger for stability
         f.write(f"v {-size} 0 {-size}\n")  # 1
         f.write(f"v {size} 0 {-size}\n")   # 2
         f.write(f"v {size} 0 {size}\n")    # 3
         f.write(f"v {-size} 0 {size}\n")   # 4
         
-        # Apex
-        f.write(f"v 0 {height} 0\n")       # 5
+        # Mid-level vertices for stepped appearance (optional detail)
+        mid_size = size * 0.7
+        mid_height = height * 0.3
+        f.write(f"v {-mid_size} {mid_height} {-mid_size}\n")  # 5
+        f.write(f"v {mid_size} {mid_height} {-mid_size}\n")   # 6
+        f.write(f"v {mid_size} {mid_height} {mid_size}\n")    # 7
+        f.write(f"v {-mid_size} {mid_height} {mid_size}\n")   # 8
         
-        # Normals
+        # Apex
+        f.write(f"v 0 {height} 0\n")       # 9
+        
+        # Normals for proper lighting
         f.write("vn 0 -1 0\n")  # Base normal (down)
         f.write("vn 0.7071 0.7071 0\n")   # Side normals (outward + up)
         f.write("vn -0.7071 0.7071 0\n")
@@ -308,11 +316,17 @@ def create_pyramid(filename):
         # Base face
         f.write("f 1//1 2//1 3//1 4//1\n")
         
-        # Side faces (triangles)
-        f.write("f 1//2 2//2 5//2\n")  # Front
-        f.write("f 2//3 3//3 5//3\n")  # Right
-        f.write("f 3//4 4//4 5//4\n")  # Back
-        f.write("f 4//5 1//5 5//5\n")  # Left
+        # Lower tier side faces (from base to mid-level)
+        f.write("f 1//2 2//2 6//2 5//2\n")  # Front lower
+        f.write("f 2//3 3//3 7//3 6//3\n")  # Right lower
+        f.write("f 3//4 4//4 8//4 7//4\n")  # Back lower
+        f.write("f 4//5 1//5 5//5 8//5\n")  # Left lower
+        
+        # Upper tier side faces (triangles from mid-level to apex)
+        f.write("f 5//2 6//2 9//2\n")  # Front upper
+        f.write("f 6//3 7//3 9//3\n")  # Right upper
+        f.write("f 7//4 8//4 9//4\n")  # Back upper
+        f.write("f 8//5 5//5 9//5\n")  # Left upper
 
 def create_cactus(filename):
     """Create desert cactus"""

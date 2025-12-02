@@ -121,7 +121,8 @@ protected:
   Model *treeModel;
   Model *rockModel;
   Model *groundModel;
-  Model *cactusModel; // NEW
+  Model *cactusModel;  // NEW
+  Model *pyramidModel; // NEW
 
 public:
   Level();
@@ -189,6 +190,8 @@ private:
   void renderPillar(float x, float y, float z);
   void renderPalmTree(float x, float y, float z);
   void renderCactus(float x, float y, float z); // NEW
+  void renderPyramid(float x, float y, float z, float baseSize,
+                     float height); // NEW
   void renderRock(float x, float y, float z);
   void renderOrb(Collectible *orb);
   void renderChest(Chest *chest);

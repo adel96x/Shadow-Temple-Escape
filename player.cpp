@@ -257,22 +257,29 @@ void Player::render() {
 
   if (playerModel && playerModel->getWidth() > 0) {
     glPushMatrix();
-    glScalef(0.5f, 0.5f, 0.5f); // Adjust scale
-    glRotatef(180, 0, 1, 0);    // Face forward
+
+    // Rotate upright (model was laying on the ground)
+    glRotatef(90, 1, 0, 0); // <<< FIX: rotate 90 degrees around X axis
+
+    glScalef(0.1f, 0.1f, 0.1f);
+    glRotatef(180, 0, 1, 0); // keep your original rotation
     playerModel->render();
+
     glPopMatrix();
   } else {
     // Fallback: Body (cylinder)
     glColor3f(0.8f, 0.6f, 0.4f);
     GLUquadric *quad = gluNewQuadric();
+
+    // Fallback model already has correct orientation fix:
     glRotatef(-90, 1, 0, 0);
     gluCylinder(quad, radius * 0.7f, radius * 0.7f, height * 0.6f, 16, 1);
 
-    // Head (sphere)
+    // Head
     glTranslatef(0, 0, height * 0.6f);
     glutSolidSphere(radius * 0.5f, 16, 16);
 
-    // Backpack (small cube)
+    // Backpack
     glColor3f(0.4f, 0.3f, 0.2f);
     glTranslatef(0, -radius * 0.4f, 0);
     glScalef(0.5f, 0.6f, 0.3f);
