@@ -75,9 +75,12 @@ void Camera::apply() {
 void Camera::toggleMode() {
   if (mode == FIRST_PERSON) {
     mode = THIRD_PERSON;
+    // Sync third-person camera to first-person yaw
+    currentYaw = yaw;
   } else {
     mode = FIRST_PERSON;
-    yaw = currentYaw; // sync to third-person orientation
+    // Sync first-person yaw to third-person camera
+    yaw = currentYaw;
     pitch = 0.0f;
   }
 }

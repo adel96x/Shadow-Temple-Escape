@@ -106,9 +106,18 @@ void Player::move(float forward, float strafe, float deltaTime) {
     while (diff < -180.0f)
       diff += 360.0f;
 
-    // Smooth rotation with frame-independent interpolation
-    float rotationLerp = 1.0f - pow(0.001f, deltaTime); // Very fast rotation
-    yaw += diff * rotationLerp;
+    // Smooth, responsive rotation with frame-independent interpolation
+    float rotationSpeed = 12.0f; // Higher = faster turning
+    float maxRotation = turnSpeed * deltaTime;
+    float rotation = diff * rotationSpeed * deltaTime;
+
+    // Clamp rotation to max turn speed
+    if (rotation > maxRotation)
+      rotation = maxRotation;
+    else if (rotation < -maxRotation)
+      rotation = -maxRotation;
+
+    yaw += rotation;
 
     // Normalize yaw to [0, 360]
     while (yaw >= 360.0f)
@@ -116,9 +125,9 @@ void Player::move(float forward, float strafe, float deltaTime) {
     while (yaw < 0.0f)
       yaw += 360.0f;
 
-    // Move in the direction of current yaw
+    // Move in the direction of current yaw (smooth movement)
     float yawRad = yaw * PI / 180.0f;
-    float speed = moveSpeed * length;
+    float speed = moveSpeed * length; // Allow partial movement for analog input
 
     x += sin(yawRad) * speed * deltaTime;
     z += cos(yawRad) * speed * deltaTime;
@@ -221,7 +230,7 @@ void Player::render() {
   glPushMatrix();
   float bobOffset = sin(bobPhase) * bobAmount;
   glTranslatef(x, y + bobOffset, z);
-  glRotatef(-yaw, 0, 1, 0);
+  glRotatef(yaw, 0, 1, 0); // Changed from -yaw to yaw to fix facing direction
 
   if (damageCooldown > 0.0f && ((int)(damageCooldown * 10) % 2 == 0))
     glColor3f(1.0f, 0.3f, 0.3f);
@@ -232,7 +241,7 @@ void Player::render() {
     glPushMatrix();
     glRotatef(90, 1, 0, 0);
     glScalef(0.1f, 0.1f, 0.1f);
-    glRotatef(180, 0, 1, 0);
+    glRotatef(180, 0, 1, 0); // Restored - needed for model orientation
     playerModel->render();
     glPopMatrix();
   } else {
