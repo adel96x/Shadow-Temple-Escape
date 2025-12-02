@@ -32,25 +32,19 @@ private:
   bool isJumping;
   bool isGrounded;
 
-  // Collision
   float radius;
   float height;
 
-  // Game state
   int health;
   int maxHealth;
   int orbsCollected;
-
-  // Animation
-  float bobPhase;
-  float bobAmount;
-
-  // Damage cooldown
-  float damageCooldown;
-  float damageFlashTimer;
   bool alive;
 
-  // Initial position for reset
+  float bobPhase;
+  float bobAmount;
+  float damageCooldown;
+  float damageFlashTimer;
+
   float initialX, initialY, initialZ;
 
 public:
@@ -58,7 +52,6 @@ public:
   ~Player();
 
   void loadModel(const char *filename);
-
   void update(float deltaTime);
   void render();
   void move(float forward, float strafe, float deltaTime);
@@ -67,11 +60,12 @@ public:
   void collectOrb();
   void reset();
   void resetPosition(float newX, float newY, float newZ);
+  void setPosition(float newX, float newY, float newZ);
+  void setYaw(float newYaw) { yaw = newYaw; }
 
-  // Collision helpers
+  // Collision
   bool checkCollision(float objX, float objZ, float objRadius);
   void resolveCollision(float objX, float objZ, float objRadius);
-
   bool checkCollisionWithBox(float boxX, float boxZ, float width, float depth);
   void resolveCollisionWithBox(float boxX, float boxZ, float width,
                                float depth);
@@ -88,10 +82,6 @@ public:
   bool isAlive() const { return alive; }
   float getDamageFlashTimer() const { return damageFlashTimer; }
   bool canTakeDamage() const { return damageCooldown <= 0.0f; }
-
-  // Setters
-  void setPosition(float newX, float newY, float newZ);
-  void setYaw(float newYaw) { yaw = newYaw; }
 };
 
 #endif // PLAYER_H

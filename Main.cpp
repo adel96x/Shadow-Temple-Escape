@@ -169,9 +169,9 @@ void update(int value) {
     float forward = 0.0f, strafe = 0.0f;
 
     if (keys['w'] || keys['W'] || specialKeys[GLUT_KEY_UP])
-      forward += 1.0f;
+      forward += 1.0f; // UP arrow = forward
     if (keys['s'] || keys['S'] || specialKeys[GLUT_KEY_DOWN])
-      forward -= 1.0f;
+      forward -= 1.0f; // DOWN arrow = backward
     if (keys['a'] || keys['A'] || specialKeys[GLUT_KEY_LEFT])
       strafe -= 1.0f;
     if (keys['d'] || keys['D'] || specialKeys[GLUT_KEY_RIGHT])

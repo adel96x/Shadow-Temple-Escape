@@ -1,11 +1,6 @@
-// ============================================================================
-// Player.cpp - Player Character Implementation
-// ============================================================================
-
 #include "player.h"
 #include "utils.h"
 
-// Helper if utils.h clamp is not found
 #ifndef CLAMP_DEFINED
 #define CLAMP_DEFINED
 inline float clamp_local(float value, float min, float max) {
@@ -25,12 +20,14 @@ Player::Player(float startX, float startY, float startZ) {
   z = initialZ = startZ;
   yaw = 0.0f;
 
-  moveSpeed = 5.0f;
-  turnSpeed = 180.0f;
+  // Professional movement parameters
+  moveSpeed = 6.5f;   // Faster, more responsive movement
+  turnSpeed = 900.0f; // Quicker turning for better control
 
-  jumpSpeed = 6.0f;
+  // Improved jump physics
+  jumpSpeed = 7.0f; // Higher jump
   velocityY = 0.0f;
-  gravity = -20.0f;
+  gravity = -22.0f; // Slightly stronger gravity for better feel
   isJumping = false;
   isGrounded = true;
 
@@ -42,14 +39,13 @@ Player::Player(float startX, float startY, float startZ) {
   orbsCollected = 0;
 
   bobPhase = 0.0f;
-  bobAmount = 0.1f;
+  bobAmount = 0.08f; // Reduced bob for smoother feel
 
   damageCooldown = 0.0f;
   damageFlashTimer = 0.0f;
   alive = true;
 
   playerModel = new Model();
-  // Try to load, will fail silently if file missing
   playerModel->load("assets/player.obj");
 }
 
@@ -64,12 +60,10 @@ void Player::loadModel(const char *filename) {
 }
 
 void Player::update(float deltaTime) {
-  // Apply gravity
   if (!isGrounded || isJumping) {
     velocityY += gravity * deltaTime;
     y += velocityY * deltaTime;
 
-    // Ground check
     if (y <= 1.0f) {
       y = 1.0f;
       velocityY = 0.0f;
@@ -80,48 +74,58 @@ void Player::update(float deltaTime) {
     }
   }
 
-  // Update damage cooldown
-  if (damageCooldown > 0.0f) {
+  if (damageCooldown > 0.0f)
     damageCooldown -= deltaTime;
-  }
-
-  // Update damage flash timer
-  if (damageFlashTimer > 0.0f) {
+  if (damageFlashTimer > 0.0f)
     damageFlashTimer -= deltaTime;
-  }
 }
 
 void Player::move(float forward, float strafe, float deltaTime) {
+  // Professional movement with acceleration and smooth rotation
+
   if (forward == 0.0f && strafe == 0.0f)
     return;
 
-  // Calculate movement direction
-  float yawRad = yaw * PI / 180.0f;
+  // Compute movement direction in world space
+  float moveX = strafe;   // left/right
+  float moveZ = -forward; // forward/back
 
-  // Fix inverted controls:
-  // Forward should be -Z (standard OpenGL)
-  // Right should be +X
-  // Yaw 0 -> Facing -Z
-
-  // Forward Vector: (-sin(yaw), 0, -cos(yaw))
-  // Right Vector: (cos(yaw), 0, -sin(yaw))
-
-  float moveX = forward * -sin(yawRad) + strafe * cos(yawRad);
-  float moveZ = forward * -cos(yawRad) + strafe * -sin(yawRad);
-
-  // Normalize diagonal movement
+  // Normalize movement vector
   float length = sqrt(moveX * moveX + moveZ * moveZ);
   if (length > 0.0f) {
     moveX /= length;
     moveZ /= length;
+
+    // Calculate target rotation based on movement direction
+    float targetYaw = atan2(moveX, moveZ) * 180.0f / PI;
+    float diff = targetYaw - yaw;
+
+    // Wrap angle difference to [-180, 180] range
+    while (diff > 180.0f)
+      diff -= 360.0f;
+    while (diff < -180.0f)
+      diff += 360.0f;
+
+    // Smooth rotation with frame-independent interpolation
+    float rotationLerp = 1.0f - pow(0.001f, deltaTime); // Very fast rotation
+    yaw += diff * rotationLerp;
+
+    // Normalize yaw to [0, 360]
+    while (yaw >= 360.0f)
+      yaw -= 360.0f;
+    while (yaw < 0.0f)
+      yaw += 360.0f;
+
+    // Move in the direction of current yaw
+    float yawRad = yaw * PI / 180.0f;
+    float speed = moveSpeed * length;
+
+    x += sin(yawRad) * speed * deltaTime;
+    z += cos(yawRad) * speed * deltaTime;
+
+    // Update head bob animation
+    bobPhase += deltaTime * 12.0f * length;
   }
-
-  // Apply movement
-  x += moveX * moveSpeed * deltaTime;
-  z += moveZ * moveSpeed * deltaTime;
-
-  // Update bobbing animation when moving
-  bobPhase += deltaTime * 10.0f;
 }
 
 void Player::jump() {
@@ -129,20 +133,16 @@ void Player::jump() {
     velocityY = jumpSpeed;
     isJumping = true;
     isGrounded = false;
-    playSound(SOUND_JUMP); // Play jump sound
   }
 }
 
 void Player::takeDamage(int amount) {
   if (damageCooldown <= 0.0f) {
     health -= amount;
-    playSound(SOUND_DAMAGE); // Play damage sound
-    if (health <= 0) {
-      health = 0;
+    if (health <= 0)
       alive = false;
-    }
-    damageCooldown = 1.0f;   // 1 second invincibility
-    damageFlashTimer = 0.3f; // Flash red for 0.3 seconds
+    damageCooldown = 1.0f;
+    damageFlashTimer = 0.3f;
   }
 }
 
@@ -174,63 +174,40 @@ void Player::resetPosition(float newX, float newY, float newZ) {
 }
 
 bool Player::checkCollision(float objX, float objZ, float objRadius) {
-  float dx = x - objX;
-  float dz = z - objZ;
-  float distance = sqrt(dx * dx + dz * dz);
-  return distance < (radius + objRadius);
+  float dx = x - objX, dz = z - objZ;
+  return sqrt(dx * dx + dz * dz) < (radius + objRadius);
 }
 
 bool Player::checkCollisionWithBox(float boxX, float boxZ, float width,
                                    float depth) {
-  // Simple AABB vs Circle collision
-  // Find the closest point on the box to the circle
   float closestX = clamp_local(x, boxX - width / 2, boxX + width / 2);
   float closestZ = clamp_local(z, boxZ - depth / 2, boxZ + depth / 2);
 
-  // Calculate distance between circle center and this closest point
-  float dx = x - closestX;
-  float dz = z - closestZ;
+  float dx = x - closestX, dz = z - closestZ;
+  return (dx * dx + dz * dz) < (radius * radius);
+}
 
-  float distanceSquared = dx * dx + dz * dz;
-  return distanceSquared < (radius * radius);
+void Player::resolveCollision(float objX, float objZ, float objRadius) {
+  float dx = x - objX, dz = z - objZ;
+  float dist = sqrt(dx * dx + dz * dz);
+
+  if (dist < radius + objRadius && dist > 0.0f) {
+    float overlap = (radius + objRadius) - dist;
+    x += dx / dist * overlap;
+    z += dz / dist * overlap;
+  }
 }
 
 void Player::resolveCollisionWithBox(float boxX, float boxZ, float width,
                                      float depth) {
   float closestX = clamp_local(x, boxX - width / 2, boxX + width / 2);
   float closestZ = clamp_local(z, boxZ - depth / 2, boxZ + depth / 2);
-
-  float dx = x - closestX;
-  float dz = z - closestZ;
-  float distance = sqrt(dx * dx + dz * dz);
-
-  if (distance < radius && distance > 0.0f) {
-    float overlap = radius - distance;
-    float pushX = (dx / distance) * overlap;
-    float pushZ = (dz / distance) * overlap;
-
-    x += pushX;
-    z += pushZ;
-  } else if (distance == 0.0f) {
-    // Center is inside the box, push out towards nearest edge
-    // This is a simplification, ideally check min penetration
-    x += radius * 1.1f;
-  }
-}
-
-void Player::resolveCollision(float objX, float objZ, float objRadius) {
-  float dx = x - objX;
-  float dz = z - objZ;
-  float distance = sqrt(dx * dx + dz * dz);
-
-  if (distance < (radius + objRadius) && distance > 0.0f) {
-    // Push player away
-    float overlap = (radius + objRadius) - distance;
-    float pushX = (dx / distance) * overlap;
-    float pushZ = (dz / distance) * overlap;
-
-    x += pushX;
-    z += pushZ;
+  float dx = x - closestX, dz = z - closestZ;
+  float dist = sqrt(dx * dx + dz * dz);
+  if (dist < radius && dist > 0.0f) {
+    float overlap = radius - dist;
+    x += dx / dist * overlap;
+    z += dz / dist * overlap;
   }
 }
 
@@ -242,50 +219,35 @@ void Player::setPosition(float newX, float newY, float newZ) {
 
 void Player::render() {
   glPushMatrix();
-
-  // Apply bobbing when moving
   float bobOffset = sin(bobPhase) * bobAmount;
   glTranslatef(x, y + bobOffset, z);
   glRotatef(-yaw, 0, 1, 0);
 
-  // Draw player
-  if (damageCooldown > 0.0f && (int)(damageCooldown * 10) % 2 == 0) {
-    glColor3f(1.0f, 0.3f, 0.3f); // Flash red when damaged
-  } else {
+  if (damageCooldown > 0.0f && ((int)(damageCooldown * 10) % 2 == 0))
+    glColor3f(1.0f, 0.3f, 0.3f);
+  else
     glColor3f(1.0f, 1.0f, 1.0f);
-  }
 
   if (playerModel && playerModel->getWidth() > 0) {
     glPushMatrix();
-
-    // Rotate upright (model was laying on the ground)
-    glRotatef(90, 1, 0, 0); // <<< FIX: rotate 90 degrees around X axis
-
+    glRotatef(90, 1, 0, 0);
     glScalef(0.1f, 0.1f, 0.1f);
-    glRotatef(180, 0, 1, 0); // keep your original rotation
+    glRotatef(180, 0, 1, 0);
     playerModel->render();
-
     glPopMatrix();
   } else {
-    // Fallback: Body (cylinder)
     glColor3f(0.8f, 0.6f, 0.4f);
     GLUquadric *quad = gluNewQuadric();
-
-    // Fallback model already has correct orientation fix:
     glRotatef(-90, 1, 0, 0);
     gluCylinder(quad, radius * 0.7f, radius * 0.7f, height * 0.6f, 16, 1);
-
-    // Head
     glTranslatef(0, 0, height * 0.6f);
     glutSolidSphere(radius * 0.5f, 16, 16);
-
-    // Backpack
     glColor3f(0.4f, 0.3f, 0.2f);
     glTranslatef(0, -radius * 0.4f, 0);
     glScalef(0.5f, 0.6f, 0.3f);
     glutSolidCube(1.0f);
-
     gluDeleteQuadric(quad);
   }
+
   glPopMatrix();
 }

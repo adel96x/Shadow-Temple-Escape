@@ -15,52 +15,53 @@ Camera::Camera() {
   upY = 1.0f;
   upZ = 0.0f;
 
-  distanceBehind = 7.0f;
-  heightAbove = 3.5f;
+  // Zoomed out camera for better view
+  distanceBehind = 10.0f; // Much further back for wider view
+  heightAbove = 4.0f;     // Higher for better perspective
 
   yaw = 0.0f;
   pitch = 0.0f;
+
+  // Responsive camera smoothing
+  smoothSpeed = 0.15f;
   currentYaw = 0.0f;
-
-  smoothSpeed = 0.1f;
 }
 
-Camera::~Camera() {
-  // Nothing to clean up
-}
+Camera::~Camera() {}
 
 void Camera::update(float playerX, float playerY, float playerZ,
                     float playerYaw, float deltaTime) {
+  // Camera no longer auto-rotates with player - only responds to mouse input
+
   if (mode == THIRD_PERSON) {
-    // Smooth yaw transition
-    // currentYaw += (playerYaw - currentYaw) * smoothSpeed;
+    float yawRad = currentYaw * PI / 180.0f;
 
     // Calculate desired camera position behind player
-    float yawRad = currentYaw * PI / 180.0f;
     float desiredX = playerX + distanceBehind * sin(yawRad);
     float desiredZ = playerZ + distanceBehind * cos(yawRad);
     float desiredY = playerY + heightAbove;
 
-    // Smooth interpolation to desired position
-    posX += (desiredX - posX) * smoothSpeed;
-    posY += (desiredY - posY) * smoothSpeed;
-    posZ += (desiredZ - posZ) * smoothSpeed;
+    // Smooth camera position with frame-independent interpolation
+    float positionLerp = 1.0f - pow(1.0f - smoothSpeed, deltaTime * 60.0f);
+    posX += (desiredX - posX) * positionLerp;
+    posY += (desiredY - posY) * positionLerp;
+    posZ += (desiredZ - posZ) * positionLerp;
 
-    // Look at player's upper body
+    // Look at player center
     targetX = playerX;
-    targetY = playerY + 1.8f;
+    targetY = playerY + 1.2f;
     targetZ = playerZ;
 
   } else if (mode == FIRST_PERSON) {
-    // Camera at player's eye level
+    // First-person camera at eye level
     posX = playerX;
-    posY = playerY + 1.7f; // Eye height
+    posY = playerY + 1.65f; // Eye level height
     posZ = playerZ;
 
-    // Calculate look direction from yaw and pitch
     float yawRad = yaw * PI / 180.0f;
     float pitchRad = pitch * PI / 180.0f;
 
+    // Calculate look direction
     targetX = posX + sin(yawRad) * cos(pitchRad);
     targetY = posY + sin(pitchRad);
     targetZ = posZ + cos(yawRad) * cos(pitchRad);
@@ -76,14 +77,16 @@ void Camera::toggleMode() {
     mode = THIRD_PERSON;
   } else {
     mode = FIRST_PERSON;
-    yaw = currentYaw; // Sync first person yaw with third person
+    yaw = currentYaw; // sync to third-person orientation
     pitch = 0.0f;
   }
 }
 
 void Camera::updateMouse(int deltaX, int deltaY) {
   if (mode == FIRST_PERSON) {
-    float sensitivity = 0.15f;
+    // Professional first-person sensitivity
+    float sensitivity = 0.12f;
+
     yaw += deltaX * sensitivity;
     pitch -= deltaY * sensitivity;
 
@@ -93,14 +96,14 @@ void Camera::updateMouse(int deltaX, int deltaY) {
     if (pitch < -89.0f)
       pitch = -89.0f;
 
-    // Wrap yaw
+    // Normalize yaw angle
     if (yaw > 360.0f)
       yaw -= 360.0f;
     if (yaw < 0.0f)
       yaw += 360.0f;
   } else if (mode == THIRD_PERSON) {
-    // Optional: rotate camera around player in third person
-    float sensitivity = 0.2f;
+    // More responsive third-person rotation
+    float sensitivity = 0.35f;
     currentYaw += deltaX * sensitivity;
   }
 }
