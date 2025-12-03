@@ -63,6 +63,13 @@ struct Trap {
         showWarning(false), warningTime(2.0f) {}
 };
 
+struct Torch {
+  float x, y, z;
+  float flickerOffset;
+
+  Torch(float px, float py, float pz) : x(px), y(py), z(pz), flickerOffset(0) {}
+};
+
 struct Obstacle {
   float x, y, z;
   float width, height, depth;
@@ -107,6 +114,7 @@ protected:
   std::vector<Enemy *> enemies;
   std::vector<Trap *> traps;
   std::vector<Obstacle *> obstacles;
+  std::vector<Torch *> torches; // New torches vector
   bool levelComplete;
 
   // Lighting

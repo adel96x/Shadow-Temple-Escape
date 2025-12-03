@@ -4,6 +4,7 @@
 // ============================================================================
 
 #include "level.h"
+#include "camera.h" // Added for camera shake
 #include <cstdio>
 #include <cstdlib>
 
@@ -65,6 +66,8 @@ Level::~Level() {
     delete t;
   for (auto o : obstacles)
     delete o;
+  for (auto t : torches)
+    delete t;
 
   if (pillarModel)
     delete pillarModel;
@@ -258,7 +261,15 @@ void DesertLevel::init(Player *p) {
   spawnOrbs();
   spawnChests();
   spawnEnemies();
+  spawnEnemies();
   spawnObstacles();
+
+  // Spawn Torches (New Feature)
+  torches.clear();
+  torches.push_back(new Torch(-4, 2, -38)); // Left of gate
+  torches.push_back(new Torch(4, 2, -38));  // Right of gate
+  torches.push_back(new Torch(10, 2, 0));   // Near start
+  torches.push_back(new Torch(-10, 2, 0));  // Near start
 
   // Create portal
   portal = new Portal(0, 1, -40);
@@ -369,11 +380,16 @@ void DesertLevel::update(float deltaTime) {
   for (auto trap : traps) {
     if (player->checkCollision(trap->x, trap->z, trap->radius)) {
       player->takeDamage(10);
+      // Trigger Camera Shake on damage
+      extern Camera *camera; // Access global camera
+      if (camera)
+        camera->triggerShake(0.5f, 0.2f);
     }
   }
 
   // Check obstacle collisions
-  // Box collision for WALL, PILLAR, ROCK, PYRAMID (SOLID - cannot pass through)
+  // Box collision for WALL, PILLAR, ROCK, PYRAMID (SOLID - cannot pass
+  // through)
   for (auto obs : obstacles) {
     if (obs->type == WALL || obs->type == PILLAR || obs->type == ICE_PILLAR ||
         obs->type == ROCK || obs->type == PYRAMID) {
@@ -498,6 +514,11 @@ void DesertLevel::checkEnemyCollision() {
     if (player->checkCollision(enemy->x, enemy->z, enemy->radius)) {
       if (player->canTakeDamage()) {
         player->takeDamage(15);
+        // Trigger Camera Shake on damage
+        extern Camera *camera;
+        if (camera)
+          camera->triggerShake(0.5f, 0.3f);
+
         // Trigger enemy reaction
         enemy->isHit = true;
         enemy->hitTimer = 0.5f;   // React for 0.5 seconds
@@ -1017,7 +1038,8 @@ void IceLevel::spawnObstacles() {
   obstacles.push_back(new Obstacle(25, 0, -10, 2, 4, 2, ROCK));  // Snowman 3
   obstacles.push_back(new Obstacle(-15, 0, -20, 2, 4, 2, ROCK)); // Snowman 4
 
-  // Spawn many ground traps (SPIKE_TRAP) - increased to 50 for harder gameplay
+  // Spawn many ground traps (SPIKE_TRAP) - increased to 50 for harder
+  // gameplay
   for (int i = 0; i < 50; i++) {
     float x = (rand() % 80) - 40.0f;
     float z = (rand() % 80) - 40.0f;
@@ -1061,6 +1083,9 @@ void IceLevel::update(float deltaTime) {
         // needed)
         if (player->canTakeDamage()) {
           player->takeDamage(20); // Increased damage for ground traps
+          extern Camera *camera;
+          if (camera)
+            camera->triggerShake(0.5f, 0.4f);
         }
       }
     }
@@ -1138,10 +1163,12 @@ void IceLevel::updateIcicles(float deltaTime) {
         if (player->checkCollision(icicle->x, icicle->z,
                                    icicle->radius * 2.0f)) {
           player->takeDamage(totalDamage);
-        }
+          extern Camera *camera;
+          if (camera)
+            camera->triggerShake(0.5f, 0.5f);
 
-        delete icicle;
-        traps.erase(traps.begin() + i);
+          traps.erase(traps.begin() + i);
+        }
       }
     }
   }
@@ -1183,6 +1210,9 @@ void IceLevel::checkEnemyCollision() {
     if (player->checkCollision(enemy->x, enemy->z, enemy->radius)) {
       if (player->canTakeDamage()) {
         player->takeDamage(20);
+        extern Camera *camera;
+        if (camera)
+          camera->triggerShake(0.5f, 0.4f);
         // Trigger enemy reaction
         enemy->isHit = true;
         enemy->hitTimer = 0.5f;
@@ -1449,8 +1479,9 @@ void IceLevel::render() {
       glPushMatrix();
       glTranslatef(obs->x, obs->y, obs->z);
       if (christmasTreeModel && christmasTreeModel->getWidth() > 0) {
-        glScalef(0.15f, 0.15f, 0.15f); // Increased scale from 0.05f to 0.15f
-        glColor3f(1.0f, 1.0f, 1.0f);   // Reset color to white
+        glScalef(0.15f, 0.15f,
+                 0.15f);             // Increased scale from 0.05f to 0.15f
+        glColor3f(1.0f, 1.0f, 1.0f); // Reset color to white
         christmasTreeModel->render();
       } else {
         // Fallback: Green cone

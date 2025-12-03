@@ -194,8 +194,9 @@ void update(int value) {
     currentLevel->update(deltaTime);
 
     // Update camera
+    bool isMoving = (forward != 0.0f || strafe != 0.0f);
     camera->update(player->getX(), player->getY(), player->getZ(),
-                   player->getYaw(), deltaTime);
+                   player->getYaw(), deltaTime, isMoving);
 
     // Check win condition
     if (currentLevel->isComplete()) {

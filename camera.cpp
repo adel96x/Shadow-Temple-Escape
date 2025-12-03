@@ -25,12 +25,19 @@ Camera::Camera() {
   // Responsive camera smoothing
   smoothSpeed = 0.15f;
   currentYaw = 0.0f;
+
+  // Initialize effects
+  shakeTimer = 0.0f;
+  shakeMagnitude = 0.0f;
+  bobTimer = 0.0f;
+  bobFrequency = 10.0f; // Footstep speed
+  bobAmplitude = 0.1f;  // Bob height
 }
 
 Camera::~Camera() {}
 
 void Camera::update(float playerX, float playerY, float playerZ,
-                    float playerYaw, float deltaTime) {
+                    float playerYaw, float deltaTime, bool isMoving) {
   // Camera no longer auto-rotates with player - only responds to mouse input
 
   if (mode == THIRD_PERSON) {
@@ -66,10 +73,48 @@ void Camera::update(float playerX, float playerY, float playerZ,
     targetY = posY + sin(pitchRad);
     targetZ = posZ + cos(yawRad) * cos(pitchRad);
   }
+
+  // Update Shake
+  if (shakeTimer > 0) {
+    shakeTimer -= deltaTime;
+    if (shakeTimer < 0)
+      shakeTimer = 0;
+  }
+
+  // Update Bobbing
+  if (isMoving && (mode == FIRST_PERSON || mode == THIRD_PERSON)) {
+    bobTimer += deltaTime * bobFrequency;
+  } else {
+    // Reset bobbing to neutral when stopped
+    bobTimer = 0.0f;
+  }
 }
 
 void Camera::apply() {
-  gluLookAt(posX, posY, posZ, targetX, targetY, targetZ, upX, upY, upZ);
+  float shakeOffsetX = 0.0f;
+  float shakeOffsetY = 0.0f;
+
+  // Apply Shake
+  if (shakeTimer > 0) {
+    float progress = shakeTimer; // Fade out? Or constant?
+    shakeOffsetX = ((float)rand() / RAND_MAX - 0.5f) * shakeMagnitude;
+    shakeOffsetY = ((float)rand() / RAND_MAX - 0.5f) * shakeMagnitude;
+  }
+
+  // Apply Bobbing (Vertical only)
+  float bobOffsetY = 0.0f;
+  if (mode == FIRST_PERSON) {
+    bobOffsetY = sin(bobTimer) * bobAmplitude;
+  }
+
+  gluLookAt(posX + shakeOffsetX, posY + shakeOffsetY + bobOffsetY, posZ,
+            targetX + shakeOffsetX, targetY + shakeOffsetY + bobOffsetY,
+            targetZ, upX, upY, upZ);
+}
+
+void Camera::triggerShake(float duration, float magnitude) {
+  shakeTimer = duration;
+  shakeMagnitude = magnitude;
 }
 
 void Camera::toggleMode() {

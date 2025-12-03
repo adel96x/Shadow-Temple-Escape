@@ -36,15 +36,25 @@ private:
   float smoothSpeed;
   float currentYaw;
 
+  // Camera Shake
+  float shakeTimer;
+  float shakeMagnitude;
+
+  // View Bobbing
+  float bobTimer;
+  float bobFrequency;
+  float bobAmplitude;
+
 public:
   Camera();
   ~Camera();
 
   void update(float playerX, float playerY, float playerZ, float playerYaw,
-              float deltaTime);
+              float deltaTime, bool isMoving); // Added isMoving
   void apply();
   void toggleMode();
   void updateMouse(int deltaX, int deltaY);
+  void triggerShake(float duration, float magnitude); // New method
 
   CameraMode getMode() const { return mode; }
   void setMode(CameraMode newMode) { mode = newMode; }
