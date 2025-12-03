@@ -554,7 +554,7 @@ void DesertLevel::checkChestInteraction(float px, float py, float pz) {
     float dz = pz - chest->z;
     float dist = sqrt(dx * dx + dz * dz);
 
-    if (dist < 3.0f && !chest->opened) {
+    if (dist < 5.0f && !chest->opened) { // Increased from 3.0f to 5.0f
       chest->opened = true;
       playSound(SOUND_CHEST_OPEN); // Play chest opening sound
       if (chest->hasOrb) {
@@ -853,19 +853,38 @@ void DesertLevel::renderChest(Chest *chest) {
     glColor3f(0.6f, 0.4f, 0.2f);
     chestModel->render();
   } else {
-    // Fallback: primitive chest
-    glColor3f(0.45f, 0.3f, 0.15f);
-    glScalef(1.5f, 1.0f, 1.0f);
-    glutSolidCube(1.0f);
+    // Fallback: primitive chest with better visibility
 
+    // Chest base (larger and more visible)
+    glColor3f(0.6f, 0.4f, 0.2f); // Brown
+    glPushMatrix();
+    glScalef(2.0f, 1.2f, 1.5f); // Larger chest
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Animate lid opening
     if (chest->opened && chest->lidAngle < 90) {
       chest->lidAngle += 2.0f;
     }
-    glTranslatef(0, 0.5f, -0.5f);
-    glRotatef(-chest->lidAngle, 1, 0, 0);
-    glTranslatef(0, 0, 0.5f);
-    glColor3f(0.5f, 0.35f, 0.2f);
+
+    // Chest lid
+    glPushMatrix();
+    glTranslatef(0, 0.6f, -0.75f);        // Position at back of chest
+    glRotatef(-chest->lidAngle, 1, 0, 0); // Rotate lid open
+    glTranslatef(0, 0, 0.75f);
+    glColor3f(0.7f, 0.5f, 0.3f); // Lighter brown for lid
+    glScalef(2.0f, 0.2f, 1.5f);
     glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Add glow effect for unopened chests with orbs
+    if (!chest->opened && chest->hasOrb) {
+      glEnable(GL_BLEND);
+      glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+      glColor4f(1.0f, 0.84f, 0.0f, 0.3f); // Golden glow
+      glutSolidSphere(1.5f, 16, 16);
+      glDisable(GL_BLEND);
+    }
   }
 
   glPopMatrix();
