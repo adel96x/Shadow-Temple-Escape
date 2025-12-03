@@ -87,7 +87,7 @@ void startGame() {
   // Start background music (continuous loop with low volume)
 #ifdef __APPLE__
   system("killall afplay 2>/dev/null");
-  system("(while true; do afplay assets/way-of-egypt-320819.mp3 -v 0.3; sleep "
+  system("(while true; do afplay assets/way-of-egypt-320819.mp3 -v 0.1; sleep "
          "0.1; "
          "done) >/dev/null 2>&1 &");
 #endif
@@ -184,10 +184,11 @@ void update(int value) {
       strafe += 1.0f;
 
     // Update player
-    if (camera->getMode() == FIRST_PERSON) {
+    bool inFirstPerson = (camera->getMode() == FIRST_PERSON);
+    if (inFirstPerson) {
       player->setYaw(camera->getYaw());
     }
-    player->move(forward, strafe, deltaTime);
+    player->move(forward, strafe, deltaTime, inFirstPerson);
     player->update(deltaTime);
 
     // Update level
@@ -286,26 +287,26 @@ void renderHUD() {
   char buffer[64];
 
   // --- Top Left: Level Info ---
-  // Background box
+  // Background
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glColor4f(0.0f, 0.0f, 0.0f, 0.5f);
   glBegin(GL_QUADS);
   glVertex2f(10, WINDOW_HEIGHT - 10);
   glVertex2f(250, WINDOW_HEIGHT - 10);
-  glVertex2f(250, WINDOW_HEIGHT - 80);
-  glVertex2f(10, WINDOW_HEIGHT - 80);
+  glVertex2f(250, WINDOW_HEIGHT - 100); // Extended to match border
+  glVertex2f(10, WINDOW_HEIGHT - 100);
   glEnd();
   glDisable(GL_BLEND);
 
   // Border
-  glColor3f(1.0f, 1.0f, 1.0f);
+  glColor3f(0.8f, 0.8f, 0.8f);
   glLineWidth(2.0f);
   glBegin(GL_LINE_LOOP);
   glVertex2f(10, WINDOW_HEIGHT - 10);
   glVertex2f(250, WINDOW_HEIGHT - 10);
-  glVertex2f(250, WINDOW_HEIGHT - 80);
-  glVertex2f(10, WINDOW_HEIGHT - 80);
+  glVertex2f(250, WINDOW_HEIGHT - 100); // Expanded to fit timer
+  glVertex2f(10, WINDOW_HEIGHT - 100);
   glEnd();
 
   // Text
@@ -318,7 +319,7 @@ void renderHUD() {
     glColor3f(1.0f, 0.84f, 0.0f); // Gold
     renderText(20, WINDOW_HEIGHT - 60, buffer);
 
-    // Timer
+    // Timer (now inside the box)
     float timeLeft = desert->getTimeRemaining();
     sprintf(buffer, "Time: %.1f", timeLeft);
     if (timeLeft < 10.0f)
@@ -570,6 +571,12 @@ void keyboard(unsigned char key, int x, int y) {
     }
     if (key == 'c' || key == 'C') {
       camera->toggleMode();
+      // Hide cursor in first person, show in third person
+      if (camera->getMode() == FIRST_PERSON) {
+        glutSetCursor(GLUT_CURSOR_NONE);
+      } else {
+        glutSetCursor(GLUT_CURSOR_CROSSHAIR);
+      }
     }
     if (key == ' ') {
       player->jump();
@@ -653,7 +660,7 @@ int main(int argc, char **argv) {
   glutPassiveMotionFunc(mouseMotion);
   glutTimerFunc(0, update, 0);
 
-  // Hide cursor for immersion
+  // Hide cursor for immersion (starts in third person)
   glutSetCursor(GLUT_CURSOR_CROSSHAIR);
 
   lastFrameTime = glutGet(GLUT_ELAPSED_TIME);

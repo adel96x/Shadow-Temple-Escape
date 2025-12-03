@@ -132,8 +132,8 @@ void Camera::toggleMode() {
 
 void Camera::updateMouse(int deltaX, int deltaY) {
   if (mode == FIRST_PERSON) {
-    // Professional first-person sensitivity
-    float sensitivity = 0.12f;
+    // Increased sensitivity for better responsiveness
+    float sensitivity = 0.25f; // Increased from 0.12f
 
     yaw += deltaX * sensitivity;
     pitch -= deltaY * sensitivity;

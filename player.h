@@ -54,7 +54,8 @@ public:
   void loadModel(const char *filename);
   void update(float deltaTime);
   void render();
-  void move(float forward, float strafe, float deltaTime);
+  void move(float forward, float strafe, float deltaTime,
+            bool skipRotation = false);
   void jump();
   void takeDamage(int amount);
   void collectOrb();

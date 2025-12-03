@@ -556,6 +556,7 @@ void DesertLevel::checkChestInteraction(float px, float py, float pz) {
 
     if (dist < 3.0f && !chest->opened) {
       chest->opened = true;
+      playSound(SOUND_CHEST_OPEN); // Play chest opening sound
       if (chest->hasOrb) {
         collectibles.push_back(
             new Collectible(chest->x, chest->y + 1, chest->z));

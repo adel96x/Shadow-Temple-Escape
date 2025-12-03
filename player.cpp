@@ -80,7 +80,8 @@ void Player::update(float deltaTime) {
     damageFlashTimer -= deltaTime;
 }
 
-void Player::move(float forward, float strafe, float deltaTime) {
+void Player::move(float forward, float strafe, float deltaTime,
+                  bool skipRotation) {
   // Professional movement with acceleration and smooth rotation
 
   if (forward == 0.0f && strafe == 0.0f)
@@ -96,34 +97,37 @@ void Player::move(float forward, float strafe, float deltaTime) {
     moveX /= length;
     moveZ /= length;
 
-    // Calculate target rotation based on movement direction
-    float targetYaw = atan2(moveX, moveZ) * 180.0f / PI;
-    float diff = targetYaw - yaw;
+    // Only calculate rotation in third person mode
+    if (!skipRotation) {
+      // Calculate target rotation based on movement direction
+      float targetYaw = atan2(moveX, moveZ) * 180.0f / PI;
+      float diff = targetYaw - yaw;
 
-    // Wrap angle difference to [-180, 180] range
-    while (diff > 180.0f)
-      diff -= 360.0f;
-    while (diff < -180.0f)
-      diff += 360.0f;
+      // Wrap angle difference to [-180, 180] range
+      while (diff > 180.0f)
+        diff -= 360.0f;
+      while (diff < -180.0f)
+        diff += 360.0f;
 
-    // Smooth, responsive rotation with frame-independent interpolation
-    float rotationSpeed = 12.0f; // Higher = faster turning
-    float maxRotation = turnSpeed * deltaTime;
-    float rotation = diff * rotationSpeed * deltaTime;
+      // Smooth, responsive rotation with frame-independent interpolation
+      float rotationSpeed = 12.0f; // Higher = faster turning
+      float maxRotation = turnSpeed * deltaTime;
+      float rotation = diff * rotationSpeed * deltaTime;
 
-    // Clamp rotation to max turn speed
-    if (rotation > maxRotation)
-      rotation = maxRotation;
-    else if (rotation < -maxRotation)
-      rotation = -maxRotation;
+      // Clamp rotation to max turn speed
+      if (rotation > maxRotation)
+        rotation = maxRotation;
+      else if (rotation < -maxRotation)
+        rotation = -maxRotation;
 
-    yaw += rotation;
+      yaw += rotation;
 
-    // Normalize yaw to [0, 360]
-    while (yaw >= 360.0f)
-      yaw -= 360.0f;
-    while (yaw < 0.0f)
-      yaw += 360.0f;
+      // Normalize yaw to [0, 360]
+      while (yaw >= 360.0f)
+        yaw -= 360.0f;
+      while (yaw < 0.0f)
+        yaw += 360.0f;
+    }
 
     // Move in the direction of current yaw (smooth movement)
     float yawRad = yaw * PI / 180.0f;
