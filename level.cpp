@@ -408,8 +408,12 @@ void DesertLevel::update(float deltaTime) {
   // Activate portal when all orbs collected
   if (player->getOrbsCollected() >= totalOrbs) {
     portal->active = true;
-    portal->rotation += 50.0f * deltaTime;
-    portal->scale = 1.0f + 0.2f * sin(glutGet(GLUT_ELAPSED_TIME) / 200.0f);
+    portal->active = true;
+    // portal->rotation += 50.0f * deltaTime; // REMOVED ROTATION
+    // portal->scale = 1.0f + 0.2f * sin(glutGet(GLUT_ELAPSED_TIME) / 200.0f);
+    // // Keep scale pulse? User said "nerer rotat", maybe scale is ok? Let's
+    // keep it static for "ancient" feel.
+    portal->scale = 1.0f; // Static scale
 
     // Check if player enters portal
     if (player->checkCollision(portal->x, portal->z, portal->radius)) {
@@ -821,23 +825,82 @@ void DesertLevel::renderPortal() {
     return;
 
   glPushMatrix();
-  glTranslatef(portal->x, portal->y + 2, portal->z);
-  glRotatef(portal->rotation, 0, 1, 0);
-  glScalef(portal->scale, portal->scale, portal->scale);
+  glTranslatef(portal->x, portal->y, portal->z);
+  // glRotatef(portal->rotation, 0, 1, 0); // REMOVED ROTATION
 
+  // Scale the whole gate structure
+  float gateScale = 1.5f;
+  glScalef(gateScale, gateScale, gateScale);
+
+  // --- ANCIENT EGYPTIAN GATE DESIGN (SIMPLIFIED) ---
+  // Using simple cubes for a monolithic, ancient look.
+
+  // 1. Left Pillar (Monolithic Block)
+  glPushMatrix();
+  glTranslatef(-2.5f, 3.0f, 0);
+  glColor3f(0.82f, 0.70f, 0.55f); // Sandstone
+  glScalef(1.5f, 6.0f, 1.5f);
+  glutSolidCube(1.0f);
+  glPopMatrix();
+
+  // 2. Right Pillar (Monolithic Block)
+  glPushMatrix();
+  glTranslatef(2.5f, 3.0f, 0);
+  glColor3f(0.82f, 0.70f, 0.55f); // Sandstone
+  glScalef(1.5f, 6.0f, 1.5f);
+  glutSolidCube(1.0f);
+  glPopMatrix();
+
+  // 3. Lintel (Top Beam)
+  glPushMatrix();
+  glTranslatef(0, 6.5f, 0);
+  glColor3f(0.82f, 0.70f, 0.55f); // Sandstone
+  glScalef(8.0f, 1.5f, 1.8f);
+  glutSolidCube(1.0f);
+  glPopMatrix();
+
+  // 4. Decorative Gold Cornice (Simple Strip)
+  glPushMatrix();
+  glTranslatef(0, 7.3f, 0);
+  glColor3f(1.0f, 0.84f, 0.0f); // Gold
+  glScalef(8.2f, 0.3f, 2.0f);
+  glutSolidCube(1.0f);
+  glPopMatrix();
+
+  // 5. Portal Energy Field (The actual "gate")
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 
   if (portal->active) {
-    glColor4f(1.0f, 0.84f, 0.0f, 0.7f);
+    // Pulsing blue/gold energy
+    float pulse = 0.5f + 0.5f * sin(glutGet(GLUT_ELAPSED_TIME) / 200.0f);
+    glColor4f(0.2f, 0.6f, 1.0f, 0.6f * pulse);
   } else {
-    glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
+    // Dim inactive state
+    glColor4f(0.1f, 0.1f, 0.1f, 0.3f);
   }
 
-  glutSolidTorus(0.3f, 2.0f, 20, 30);
+  glPushMatrix();
+  glTranslatef(0, 3.0f, 0);
+  glScalef(4.0f, 5.5f, 0.2f);
+  glutSolidCube(1.0f);
+  glPopMatrix();
 
-  glColor4f(0.8f, 0.7f, 1.0f, 0.5f);
-  glutSolidSphere(1.8f, 20, 20);
+  // Swirling particles effect for active portal
+  if (portal->active) {
+    glColor4f(1.0f, 0.9f, 0.5f, 0.8f);
+    float time = glutGet(GLUT_ELAPSED_TIME) / 500.0f;
+    for (int i = 0; i < 8; i++) {
+      glPushMatrix();
+      glTranslatef(0, 3.0f, 0);
+      glRotatef(time * 100.0f + i * 45.0f, 0, 0,
+                1); // Internal swirl is fine, just not the gate itself
+      glTranslatef(1.5f, 0, 0);
+      glScalef(0.2f, 0.2f, 0.2f);
+      glutSolidDodecahedron();
+      glPopMatrix();
+    }
+  }
 
   glDisable(GL_BLEND);
   glPopMatrix();
@@ -905,6 +968,41 @@ void IceLevel::spawnEnemies() {
   elemental2->patrolPoints.push_back({15, 1, 10});
   elemental2->patrolPoints.push_back({-15, 1, 10});
   enemies.push_back(elemental2);
+
+  // --- NEW ENEMIES (5 Added) ---
+
+  // 3. Guarding the exit area
+  Enemy *guard1 = new Enemy(0, 1, -25);
+  guard1->patrolPoints.push_back({-5, 1, -25});
+  guard1->patrolPoints.push_back({5, 1, -25});
+  enemies.push_back(guard1);
+
+  // 4. Roaming the center
+  Enemy *roamer1 = new Enemy(0, 1, 0);
+  roamer1->patrolPoints.push_back({0, 1, 5});
+  roamer1->patrolPoints.push_back({5, 1, 0});
+  roamer1->patrolPoints.push_back({0, 1, -5});
+  roamer1->patrolPoints.push_back({-5, 1, 0});
+  enemies.push_back(roamer1);
+
+  // 5. Far corner ambusher
+  Enemy *ambusher1 = new Enemy(30, 1, 30);
+  ambusher1->patrolPoints.push_back({30, 1, 30});
+  ambusher1->patrolPoints.push_back({20, 1, 20});
+  enemies.push_back(ambusher1);
+
+  // 6. Another corner guard
+  Enemy *guard2 = new Enemy(-30, 1, 30);
+  guard2->patrolPoints.push_back({-30, 1, 30});
+  guard2->patrolPoints.push_back({-30, 1, 10});
+  enemies.push_back(guard2);
+
+  // 7. Fast interceptor
+  Enemy *interceptor = new Enemy(20, 1, -20);
+  interceptor->speed = 3.5f; // Faster than others
+  interceptor->patrolPoints.push_back({20, 1, -20});
+  interceptor->patrolPoints.push_back({-20, 1, -20});
+  enemies.push_back(interceptor);
 }
 
 void IceLevel::spawnObstacles() {

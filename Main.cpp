@@ -362,8 +362,30 @@ void renderHUD() {
   glEnd();
 
   sprintf(buffer, "%d%%", player->getHealth());
+  // Improved Health Text Color: Bright White with Black Shadow for readability
+  // Shadow
+  glColor3f(0.0f, 0.0f, 0.0f);
+  renderText(232, 26, buffer);
+  // Main Text
   glColor3f(1.0f, 1.0f, 1.0f);
   renderText(230, 28, buffer);
+
+  // --- Start Message "LET'S GO!" ---
+  float timeSinceStart = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+  if (timeSinceStart < 3.0f) { // Show for first 3 seconds
+    glPushMatrix();
+    // Center of screen
+    glTranslatef(WINDOW_WIDTH / 2.0f - 100, WINDOW_HEIGHT / 2.0f + 50, 0);
+
+    // Pulsing effect
+    float pulse = 1.0f + 0.2f * sin(timeSinceStart * 5.0f);
+    glScalef(pulse, pulse, 1.0f);
+
+    // Text Color: Gold/Orange
+    glColor3f(1.0f, 0.6f, 0.0f);
+    renderText(0, 0, "LET'S GO!", GLUT_BITMAP_TIMES_ROMAN_24);
+    glPopMatrix();
+  }
 
   // --- Top Right: Camera Mode ---
   glColor3f(0.8f, 0.8f, 0.8f);
