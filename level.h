@@ -173,6 +173,10 @@ private:
   float timeOfDay;
   float daySpeed;
 
+  // Level Timer
+  float levelTimer;
+  float maxTime;
+
   // Desert-specific textures
   Texture sandTexture;
   Texture desertWallTexture;
@@ -189,6 +193,7 @@ public:
   bool isDesert() const override { return true; }
 
   int getTotalOrbs() const { return totalOrbs; }
+  float getTimeRemaining() const { return levelTimer; }
 
 private:
   void spawnOrbs();

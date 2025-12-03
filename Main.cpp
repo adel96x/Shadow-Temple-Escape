@@ -207,6 +207,14 @@ void update(int value) {
     if (!player->isAlive()) {
       currentState = GAME_OVER;
     }
+
+    // Check timer for Level 1
+    if (currentState == LEVEL1) {
+      DesertLevel *desert = (DesertLevel *)currentLevel;
+      if (desert->getTimeRemaining() <= 0.0f) {
+        currentState = GAME_OVER;
+      }
+    }
   }
 
   glutPostRedisplay();
@@ -309,6 +317,17 @@ void renderHUD() {
             desert->getTotalOrbs());
     glColor3f(1.0f, 0.84f, 0.0f); // Gold
     renderText(20, WINDOW_HEIGHT - 60, buffer);
+
+    // Timer
+    float timeLeft = desert->getTimeRemaining();
+    sprintf(buffer, "Time: %.1f", timeLeft);
+    if (timeLeft < 10.0f)
+      glColor3f(1.0f, 0.2f, 0.2f); // Red
+    else if (timeLeft < 30.0f)
+      glColor3f(1.0f, 0.6f, 0.0f); // Orange
+    else
+      glColor3f(0.6f, 0.8f, 1.0f); // Light blue
+    renderText(20, WINDOW_HEIGHT - 85, buffer);
   } else if (currentState == LEVEL2) {
     IceLevel *ice = (IceLevel *)currentLevel;
     renderText(20, WINDOW_HEIGHT - 35, "Level 2: Ice Cave");

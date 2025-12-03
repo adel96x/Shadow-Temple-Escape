@@ -240,6 +240,8 @@ DesertLevel::DesertLevel() : Level() {
   totalOrbs = 5;
   timeOfDay = 0.0f;
   daySpeed = 0.05f;
+  levelTimer = 120.0f; // 2 minutes
+  maxTime = 120.0f;
 }
 
 DesertLevel::~DesertLevel() {
@@ -250,6 +252,7 @@ DesertLevel::~DesertLevel() {
 void DesertLevel::init(Player *p) {
   player = p;
   levelComplete = false;
+  levelTimer = maxTime; // Reset timer
 
   // Setup lighting
   sunLight.position = {0, 50, 0, 1};
@@ -371,6 +374,9 @@ void DesertLevel::spawnObstacles() {
 }
 
 void DesertLevel::update(float deltaTime) {
+  // Update timer
+  levelTimer -= deltaTime;
+
   updateDayNightCycle(deltaTime);
   checkOrbCollection();
   updateEnemies(deltaTime);
@@ -639,6 +645,45 @@ void DesertLevel::render() {
   // Render portal
   if (portal)
     renderPortal();
+
+  // Render Torches
+  for (auto torch : torches) {
+    glPushMatrix();
+    glTranslatef(torch->x, torch->y, torch->z);
+
+    // Torch stick
+    glColor3f(0.4f, 0.2f, 0.1f);
+    glPushMatrix();
+    glScalef(0.1f, 1.5f, 0.1f);
+    glutSolidCube(1.0f);
+    glPopMatrix();
+
+    // Flame (Simple particle effect simulation)
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    torch->flickerOffset += 0.1f;
+    float flicker = 0.8f + 0.2f * sin(torch->flickerOffset);
+
+    glColor4f(1.0f, 0.5f, 0.0f, 0.8f);
+    glPushMatrix();
+    glTranslatef(0, 0.8f, 0);
+    glScalef(flicker * 0.3f, flicker * 0.5f, flicker * 0.3f);
+    glutSolidSphere(1.0f, 8, 8);
+    glPopMatrix();
+
+    glDisable(GL_BLEND);
+    glPopMatrix();
+  }
+
+  // Render Sun
+  glPushMatrix();
+  glTranslatef(sunLight.position[0], sunLight.position[1],
+               sunLight.position[2]);
+  glDisable(GL_LIGHTING);
+  glColor3f(1.0f, 1.0f, 0.8f); // Bright yellow-white
+  glutSolidSphere(5.0f, 20, 20);
+  glEnable(GL_LIGHTING);
+  glPopMatrix();
 }
 
 void DesertLevel::renderDesertEnvironment() {
@@ -1501,8 +1546,16 @@ void IceLevel::render() {
 }
 
 void IceLevel::renderIceEnvironment() {
-  // Render professional snow ground
+  // Render icy ground with high specularity
+  glEnable(GL_LIGHTING);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, (GLfloat[]){1.0f, 1.0f, 1.0f, 1.0f});
+  glMaterialf(GL_FRONT, GL_SHININESS, 100.0f); // High shininess for ice
+
   renderGround(50, snowTexture);
+
+  // Reset material properties
+  glMaterialfv(GL_FRONT, GL_SPECULAR, (GLfloat[]){0.0f, 0.0f, 0.0f, 1.0f});
+  glMaterialf(GL_FRONT, GL_SHININESS, 0.0f);
 
   // Cold blue sky
   renderSkybox(0.6f, 0.7f, 0.85f);

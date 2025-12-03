@@ -152,6 +152,9 @@ void Player::takeDamage(int amount) {
       alive = false;
     damageCooldown = 1.0f;
     damageFlashTimer = 0.3f;
+
+    // Play hurt sound
+    playSound(SOUND_DAMAGE);
   }
 }
 
