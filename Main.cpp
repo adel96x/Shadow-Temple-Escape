@@ -324,66 +324,105 @@ void renderHUD() {
     renderText(20, WINDOW_HEIGHT - 60, buffer);
   }
 
-  // --- Bottom Left: Health Bar ---
+  // --- Bottom Left: Professional Health Bar ---
   float healthPercent = (float)player->getHealth() / 100.0f;
 
-  // Bar Background
-  glColor4f(0.2f, 0.2f, 0.2f, 0.8f);
+  // 1. Heart Icon
+  glPushMatrix();
+  glTranslatef(35, 35, 0);
+  glScalef(15, 15, 1);
+  glColor3f(1.0f, 0.2f, 0.2f); // Red Heart
+  glBegin(GL_TRIANGLE_FAN);
+  glVertex2f(0, 0);
+  for (int i = 0; i <= 100; i++) {
+    float angle = i * 2.0f * 3.14159f / 100.0f;
+    float r = (sin(angle) * sqrt(abs(cos(angle)))) / (sin(angle) + 1.4142f) -
+              2 * sin(angle) + 2;
+    glVertex2f(r * 0.5f, -r * 0.5f + 1.0f); // Adjust shape
+  }
+  glEnd();
+  glPopMatrix();
+
+  // 2. Bar Background (Sleek, Semi-transparent)
+  float barX = 60;
+  float barY = 25;
+  float barWidth = 200;
+  float barHeight = 20;
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glColor4f(0.0f, 0.0f, 0.0f, 0.6f);
   glBegin(GL_QUADS);
-  glVertex2f(20, 20);
-  glVertex2f(220, 20);
-  glVertex2f(220, 50);
-  glVertex2f(20, 50);
+  glVertex2f(barX, barY);
+  glVertex2f(barX + barWidth, barY);
+  glVertex2f(barX + barWidth, barY + barHeight);
+  glVertex2f(barX, barY + barHeight);
   glEnd();
 
-  // Health Fill
+  // 3. Bar Fill (Gradient)
+  float fillWidth = barWidth * healthPercent;
+  glBegin(GL_QUADS);
+  // Left color (Green)
+  glColor4f(0.0f, 0.8f, 0.2f, 0.9f);
+  glVertex2f(barX, barY + 2);
+  glVertex2f(barX + fillWidth, barY + 2);
+  // Right color (Lighter Green or Red if low)
   if (healthPercent > 0.5f)
-    glColor3f(0.2f, 0.8f, 0.2f);
-  else if (healthPercent > 0.2f)
-    glColor3f(0.9f, 0.6f, 0.1f);
+    glColor4f(0.4f, 1.0f, 0.4f, 0.9f);
   else
-    glColor3f(0.9f, 0.1f, 0.1f);
+    glColor4f(1.0f, 0.2f, 0.2f, 0.9f);
 
-  glBegin(GL_QUADS);
-  glVertex2f(22, 22);
-  glVertex2f(22 + 196 * healthPercent, 22);
-  glVertex2f(22 + 196 * healthPercent, 48);
-  glVertex2f(22, 48);
+  glVertex2f(barX + fillWidth, barY + barHeight - 2);
+  glVertex2f(barX, barY + barHeight - 2);
   glEnd();
+  glDisable(GL_BLEND);
 
-  // Bar Border
-  glColor3f(0.8f, 0.8f, 0.8f);
-  glLineWidth(2.0f);
-  glBegin(GL_LINE_LOOP);
-  glVertex2f(20, 20);
-  glVertex2f(220, 20);
-  glVertex2f(220, 50);
-  glVertex2f(20, 50);
-  glEnd();
-
-  sprintf(buffer, "%d%%", player->getHealth());
-  // Improved Health Text Color: Bright White with Black Shadow for readability
-  // Shadow
-  glColor3f(0.0f, 0.0f, 0.0f);
-  renderText(232, 26, buffer);
-  // Main Text
+  // 4. Health Text (Clean White)
+  sprintf(buffer, "HP %d%%", player->getHealth());
   glColor3f(1.0f, 1.0f, 1.0f);
-  renderText(230, 28, buffer);
+  // Centered above bar
+  renderText(barX + 5, barY + barHeight + 5, buffer, GLUT_BITMAP_HELVETICA_12);
 
-  // --- Start Message "LET'S GO!" ---
+  // --- Start Message "LET'S GO!" (Enhanced) ---
   float timeSinceStart = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
-  if (timeSinceStart < 3.0f) { // Show for first 3 seconds
+  if (timeSinceStart < 3.5f) {
     glPushMatrix();
     // Center of screen
-    glTranslatef(WINDOW_WIDTH / 2.0f - 100, WINDOW_HEIGHT / 2.0f + 50, 0);
+    glTranslatef(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f, 0);
 
-    // Pulsing effect
-    float pulse = 1.0f + 0.2f * sin(timeSinceStart * 5.0f);
-    glScalef(pulse, pulse, 1.0f);
+    // Animation: Zoom in and bounce
+    float scale = 0.0f;
+    if (timeSinceStart < 0.5f)
+      scale = timeSinceStart * 2.0f; // Zoom in
+    else if (timeSinceStart < 3.0f)
+      scale = 1.0f + 0.1f * sin(timeSinceStart * 5.0f); // Pulse
+    else
+      scale = 1.0f - (timeSinceStart - 3.0f) * 2.0f; // Zoom out
 
-    // Text Color: Gold/Orange
-    glColor3f(1.0f, 0.6f, 0.0f);
-    renderText(0, 0, "LET'S GO!", GLUT_BITMAP_TIMES_ROMAN_24);
+    if (scale < 0)
+      scale = 0;
+
+    glScalef(scale * 0.5f, scale * 0.5f, 1.0f); // Scale down stroke font
+
+    // Centering text (approximate width of "LET'S GO!" is ~600 units in stroke
+    // font)
+    glTranslatef(-300, -50, 0);
+
+    glLineWidth(3.0f);
+    // Shadow/Outline
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glPushMatrix();
+    glTranslatef(4, -4, 0);
+    for (const char *c = "LET'S GO!"; *c != '\0'; c++)
+      glutStrokeCharacter(GLUT_STROKE_ROMAN, *c);
+    glPopMatrix();
+
+    // Main Text (Gold)
+    glColor3f(1.0f, 0.8f, 0.0f);
+    for (const char *c = "LET'S GO!"; *c != '\0'; c++)
+      glutStrokeCharacter(GLUT_STROKE_ROMAN, *c);
+
+    glLineWidth(1.0f);
     glPopMatrix();
   }
 
