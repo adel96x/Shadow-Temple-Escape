@@ -27,9 +27,12 @@ struct Collectible {
   float bobPhase;
   float radius;
 
+  bool isSpawning;
+  float spawnTimer;
+
   Collectible(float px, float py, float pz)
       : x(px), y(py), z(pz), collected(false), rotation(0), bobPhase(0),
-        radius(0.5f) {}
+        radius(0.5f), isSpawning(false), spawnTimer(0.0f) {}
 };
 
 struct Enemy {
@@ -97,9 +100,11 @@ struct Chest {
   bool opened;
   bool hasOrb;
   float lidAngle;
+  bool hasCoins;
 
-  Chest(float px, float py, float pz, bool orb)
-      : x(px), y(py), z(pz), opened(false), hasOrb(orb), lidAngle(0) {}
+  Chest(float px, float py, float pz, bool orb, bool coins = false)
+      : x(px), y(py), z(pz), opened(false), hasOrb(orb), lidAngle(0),
+        hasCoins(coins) {}
 };
 
 // ============================================================================
@@ -147,7 +152,7 @@ public:
   virtual void update(float deltaTime) = 0;
   virtual void render() = 0;
   virtual void reset() = 0;
-  virtual void interact(float px, float py, float pz) = 0;
+  virtual void interact(float px, float py, float pz) {}
   virtual bool isDesert() const = 0;
 
   bool isComplete() const { return levelComplete; }

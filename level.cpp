@@ -256,9 +256,12 @@ void DesertLevel::init(Player *p) {
 
   // Setup lighting
   sunLight.position = {0, 50, 0, 1};
-  sunLight.ambient = {0.3f, 0.3f, 0.3f, 1.0f};
-  sunLight.diffuse = {0.8f, 0.7f, 0.5f, 1.0f};
-  sunLight.specular = {1.0f, 1.0f, 0.8f, 1.0f};
+  sunLight.ambient = {0.5f, 0.5f, 0.5f, 1.0f};
+  sunLight.diffuse = {1.0f, 0.9f, 0.8f, 1.0f}; // Warm sunlight
+  sunLight.specular = {1.0f, 1.0f, 1.0f, 1.0f};
+
+  // Set Normal Physics (High acceleration, High friction)
+  player->setPhysics(60.0f, 10.0f, 6.5f);
 
   // Spawn level elements
   spawnOrbs();
@@ -299,10 +302,10 @@ void DesertLevel::spawnChests() {
   chests.clear();
 
   // Some chests have orbs, some don't
-  chests.push_back(new Chest(25, 0.5f, 0, true));
-  chests.push_back(new Chest(-20, 0.5f, 20, false));
-  chests.push_back(new Chest(0, 0.5f, 25, true));
-  chests.push_back(new Chest(30, 0.5f, -15, false));
+  chests.push_back(new Chest(25, 0.5f, 0, true, false));
+  chests.push_back(new Chest(-20, 0.5f, 20, false, true)); // Coins!
+  chests.push_back(new Chest(0, 0.5f, 25, true, false));
+  chests.push_back(new Chest(30, 0.5f, -15, false, true)); // Coins!
 }
 
 void DesertLevel::spawnEnemies() {
@@ -382,6 +385,33 @@ void DesertLevel::update(float deltaTime) {
   updateEnemies(deltaTime);
   checkEnemyCollision();
 
+  // Update Chest Animations
+  for (auto chest : chests) {
+    if (chest->opened && chest->lidAngle < 90.0f) {
+      chest->lidAngle += 90.0f * deltaTime; // Smooth opening over ~1 second
+      if (chest->lidAngle > 90.0f)
+        chest->lidAngle = 90.0f;
+    }
+  }
+
+  // Update Orb Spawning Animation
+  for (auto orb : collectibles) {
+    if (orb->isSpawning) {
+      orb->spawnTimer += deltaTime;
+      if (orb->spawnTimer < 1.0f) {
+        // Floating up animation (0 to 1.0)
+        // Start from y=0.5 (inside chest) to y=1.5 (hover height)
+        float progress = orb->spawnTimer;
+        // Ease out function for smooth rise
+        progress = 1.0f - pow(1.0f - progress, 3.0f);
+        orb->y = 0.5f + progress * 1.0f;
+      } else {
+        orb->isSpawning = false;
+        orb->y = 1.5f; // Final height
+      }
+    }
+  }
+
   // Check trap collisions
   for (auto trap : traps) {
     if (player->checkCollision(trap->x, trap->z, trap->radius)) {
@@ -397,34 +427,6 @@ void DesertLevel::update(float deltaTime) {
   // Box collision for WALL, PILLAR, ROCK, PYRAMID (SOLID - cannot pass
   // through)
   for (auto obs : obstacles) {
-    if (obs->type == WALL || obs->type == PILLAR || obs->type == ICE_PILLAR ||
-        obs->type == ROCK || obs->type == PYRAMID) {
-      // Use Box collision for walls, pillars, rocks, and ice pillars
-      if (player->checkCollisionWithBox(obs->x, obs->z, obs->width,
-                                        obs->depth)) {
-        player->resolveCollisionWithBox(obs->x, obs->z, obs->width, obs->depth);
-      }
-    } else if (obs->type == TREE || obs->type == CACTUS) {
-      // Use Box collision for trees and cacti to make them solid
-      // Trees and Cacti are taller than wide, so we use a reasonable box size
-      float width = obs->width;
-      float depth = obs->depth;
-      // Ensure minimum size for collision
-      if (width < 1.0f)
-        width = 1.0f;
-      if (depth < 1.0f)
-        depth = 1.0f;
-
-      if (player->checkCollisionWithBox(obs->x, obs->z, width, depth)) {
-        player->resolveCollisionWithBox(obs->x, obs->z, width, depth);
-      }
-    } else {
-      // Use Cylinder/Sphere collision for others
-      float obsRadius = obs->width / 2.0f;
-      if (player->checkCollision(obs->x, obs->z, obsRadius)) {
-        player->resolveCollision(obs->x, obs->z, obsRadius);
-      }
-    }
   }
 
   // Activate portal when all orbs collected
@@ -554,12 +556,16 @@ void DesertLevel::checkChestInteraction(float px, float py, float pz) {
     float dz = pz - chest->z;
     float dist = sqrt(dx * dx + dz * dz);
 
-    if (dist < 5.0f && !chest->opened) { // Increased from 3.0f to 5.0f
+    if (dist < 8.0f && !chest->opened) { // Increased from 5.0f to 8.0f
       chest->opened = true;
       playSound(SOUND_CHEST_OPEN); // Play chest opening sound
       if (chest->hasOrb) {
-        collectibles.push_back(
-            new Collectible(chest->x, chest->y + 1, chest->z));
+        Collectible *orb =
+            new Collectible(chest->x, 0.5f, chest->z); // Start low inside chest
+        orb->isSpawning = true; // Trigger floating animation
+        collectibles.push_back(orb);
+      } else if (chest->hasCoins) {
+        // Opened a chest with coins!
       }
     }
   }
@@ -567,7 +573,10 @@ void DesertLevel::checkChestInteraction(float px, float py, float pz) {
 
 void DesertLevel::reset() {
   levelComplete = false;
+  levelComplete = false;
   portal->active = false;
+  // Set Normal Physics
+  player->setPhysics(60.0f, 10.0f, 6.5f);
 
   for (auto orb : collectibles)
     orb->collected = false;
@@ -862,9 +871,15 @@ void DesertLevel::renderChest(Chest *chest) {
     glutSolidCube(1.0f);
     glPopMatrix();
 
-    // Animate lid opening
-    if (chest->opened && chest->lidAngle < 90) {
-      chest->lidAngle += 2.0f;
+    // Animate lid opening (Logic moved to update for frame-rate independence)
+    // if (chest->opened && chest->lidAngle < 90) {
+    //   chest->lidAngle += 2.0f;
+    // } else if (!chest->opened && chest->hasCoins) {
+    //   // Slightly ajar if it has coins
+    //   chest->lidAngle = 15.0f;
+    // }
+    if (!chest->opened && chest->hasCoins) {
+      chest->lidAngle = 15.0f;
     }
 
     // Chest lid
@@ -1008,7 +1023,12 @@ IceLevel::~IceLevel() {}
 void IceLevel::init(Player *p) {
   player = p;
   levelComplete = false;
+  player = p;
+  levelComplete = false;
   survivalTimer = 0.0f;
+
+  // Set Snow Physics (Low acceleration, Low friction/sliding, Higher max speed)
+  player->setPhysics(15.0f, 1.5f, 9.0f);
 
   // Cold blue lighting
   sunLight.position = {0, 50, 0, 1};
@@ -1305,7 +1325,10 @@ void IceLevel::reset() {
   survivalTimer = 0.0f;
   icicleSpawnTimer = 0.0f;
   icicleSpawnInterval = 3.0f;
+  icicleSpawnInterval = 3.0f;
   portal->active = false;
+  // Set Snow Physics
+  player->setPhysics(15.0f, 1.5f, 9.0f);
 
   for (auto trap : traps)
     delete trap;

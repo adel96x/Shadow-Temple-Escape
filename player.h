@@ -25,6 +25,12 @@ private:
   float moveSpeed;
   float turnSpeed;
 
+  // Physics Movement
+  float velocityX, velocityZ;
+  float acceleration;
+  float friction;
+  float maxSpeed;
+
   // Jumping
   float jumpSpeed;
   float velocityY;
@@ -63,6 +69,7 @@ public:
   void resetPosition(float newX, float newY, float newZ);
   void setPosition(float newX, float newY, float newZ);
   void setYaw(float newYaw) { yaw = newYaw; }
+  void setPhysics(float accel, float fric, float maxSpd);
 
   // Collision
   bool checkCollision(float objX, float objZ, float objRadius);

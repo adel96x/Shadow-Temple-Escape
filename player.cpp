@@ -24,6 +24,13 @@ Player::Player(float startX, float startY, float startZ) {
   moveSpeed = 6.5f;   // Faster, more responsive movement
   turnSpeed = 900.0f; // Quicker turning for better control
 
+  // Default Physics (Desert/Normal)
+  velocityX = 0.0f;
+  velocityZ = 0.0f;
+  acceleration = 60.0f; // High acceleration for snappy feel
+  friction = 10.0f;     // High friction for quick stops
+  maxSpeed = 6.5f;
+
   // Improved jump physics
   jumpSpeed = 7.0f; // Higher jump
   velocityY = 0.0f;
@@ -78,6 +85,22 @@ void Player::update(float deltaTime) {
     damageCooldown -= deltaTime;
   if (damageFlashTimer > 0.0f)
     damageFlashTimer -= deltaTime;
+
+  // Apply velocity to position
+  x += velocityX * deltaTime;
+  z += velocityZ * deltaTime;
+
+  // Apply friction
+  float speed = sqrt(velocityX * velocityX + velocityZ * velocityZ);
+  if (speed > 0.0f) {
+    float drop = speed * friction * deltaTime;
+    float newSpeed = speed - drop;
+    if (newSpeed < 0.0f)
+      newSpeed = 0.0f;
+
+    velocityX *= newSpeed / speed;
+    velocityZ *= newSpeed / speed;
+  }
 }
 
 void Player::move(float forward, float strafe, float deltaTime,
@@ -131,13 +154,23 @@ void Player::move(float forward, float strafe, float deltaTime,
 
     // Move in the direction of current yaw (smooth movement)
     float yawRad = yaw * PI / 180.0f;
-    float speed = moveSpeed * length; // Allow partial movement for analog input
 
-    x += sin(yawRad) * speed * deltaTime;
-    z += cos(yawRad) * speed * deltaTime;
+    // Apply acceleration based on input
+    float accelX = sin(yawRad) * acceleration;
+    float accelZ = cos(yawRad) * acceleration;
+
+    velocityX += accelX * deltaTime;
+    velocityZ += accelZ * deltaTime;
+
+    // Cap speed
+    float currentSpeed = sqrt(velocityX * velocityX + velocityZ * velocityZ);
+    if (currentSpeed > maxSpeed) {
+      velocityX = (velocityX / currentSpeed) * maxSpeed;
+      velocityZ = (velocityZ / currentSpeed) * maxSpeed;
+    }
 
     // Update head bob animation
-    bobPhase += deltaTime * 12.0f * length;
+    bobPhase += deltaTime * 12.0f * (currentSpeed / maxSpeed);
   }
 }
 
@@ -231,6 +264,14 @@ void Player::setPosition(float newX, float newY, float newZ) {
   x = newX;
   y = newY;
   z = newZ;
+  velocityX = 0.0f;
+  velocityZ = 0.0f;
+}
+
+void Player::setPhysics(float accel, float fric, float maxSpd) {
+  acceleration = accel;
+  friction = fric;
+  maxSpeed = maxSpd;
 }
 
 void Player::render() {
