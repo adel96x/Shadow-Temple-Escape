@@ -45,6 +45,9 @@ float deltaTime = 0.0f;
 // Menu selection
 int menuSelection = 0;
 
+// Game Start Timer (Relative to actual start)
+int gameStartTime = 0;
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -111,6 +114,9 @@ void startGame() {
   currentLevel->init(player);
 
   currentState = LEVEL1;
+
+  // Set start time AFTER everything is loaded
+  gameStartTime = glutGet(GLUT_ELAPSED_TIME);
 }
 
 void nextLevel() {
@@ -395,7 +401,7 @@ void renderHUD() {
   renderText(barX + 5, barY + barHeight + 5, buffer, GLUT_BITMAP_HELVETICA_12);
 
   // --- Start Message "LET'S GO!" (Enhanced) ---
-  float timeSinceStart = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+  float timeSinceStart = (glutGet(GLUT_ELAPSED_TIME) - gameStartTime) / 1000.0f;
   if (timeSinceStart < 6.0f) {
     glPushMatrix();
     // Center of screen
