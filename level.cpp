@@ -1275,6 +1275,23 @@ void DesertLevel::renderPortal() {
       glutSolidDodecahedron();
       glPopMatrix();
     }
+
+    // Golden Glow Aura (Large outer glow)
+    float goldenPulse = 0.6f + 0.4f * sin(glutGet(GLUT_ELAPSED_TIME) / 250.0f);
+    glColor4f(1.0f, 0.84f, 0.0f, 0.3f * goldenPulse); // Golden color
+    glPushMatrix();
+    glTranslatef(0, 3.0f, 0);
+    glScalef(3.5f, 5.0f, 3.5f); // Large aura sphere
+    glutSolidSphere(1.0f, 24, 24);
+    glPopMatrix();
+
+    // Bright Golden Core Glow
+    glColor4f(1.0f, 0.9f, 0.4f, 0.5f * goldenPulse); // Bright golden
+    glPushMatrix();
+    glTranslatef(0, 3.0f, 0);
+    glScalef(2.2f, 4.0f, 2.2f); // Mid-sized glow
+    glutSolidSphere(1.0f, 20, 20);
+    glPopMatrix();
   }
 
   glDisable(GL_BLEND);
