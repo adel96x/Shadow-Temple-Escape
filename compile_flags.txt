@@ -1,0 +1,6 @@
+-I/opt/homebrew/include
+-I/usr/local/include
+-I.
+-Wall
+-D__APPLE__
+-xc++

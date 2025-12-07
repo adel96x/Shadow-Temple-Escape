@@ -6,9 +6,18 @@
 #ifndef MODEL_H
 #define MODEL_H
 
-#include "utils.h"
-#include <vector>
 #include <string>
+#include <vector>
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
+
+// Assimp includes
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 struct Vertex {
     float x, y, z;

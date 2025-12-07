@@ -1180,6 +1180,17 @@ void DesertLevel::renderChest(Chest *chest) {
 }
 
 void DesertLevel::renderScorpion(Enemy *enemy) {
+  // Distance Culling
+  float dx = enemy->x - player->getX();
+  float dz = enemy->z - player->getZ();
+  float distSq = dx * dx + dz * dz;
+
+  // Cull if further than 80 units (squared = 6400)
+  // But always render if within view frustum ideally. Simple distance check for
+  // now.
+  if (distSq > 6400.0f)
+    return;
+
   glPushMatrix();
   glTranslatef(enemy->x, enemy->y, enemy->z);
   glRotatef(enemy->rotation, 0, 1, 0);

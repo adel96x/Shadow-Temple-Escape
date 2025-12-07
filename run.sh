@@ -1,7 +1,7 @@
 #!/bin/bash
 # Compile the game
 echo "Compiling..."
-g++ -o shadow_temple Main.cpp camera.cpp player.cpp level.cpp model.cpp -framework OpenGL -framework GLUT -Wno-deprecated-declarations -Wall
+g++ -O3 -march=native -o shadow_temple Main.cpp camera.cpp player.cpp level.cpp model.cpp -framework OpenGL -framework GLUT -Wno-deprecated-declarations -Wall -I/opt/homebrew/include -L/opt/homebrew/lib -lassimp
 
 # Check if compilation was successful
 if [ $? -eq 0 ]; then
