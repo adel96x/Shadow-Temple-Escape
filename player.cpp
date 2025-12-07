@@ -201,7 +201,8 @@ void Player::move(float forward, float strafe, float deltaTime,
     }
 
     // Update head bob animation
-    bobPhase += deltaTime * 12.0f * (currentSpeed / maxSpeed);
+    // Faster bob for clearer step rhythm
+    bobPhase += deltaTime * 18.0f * (currentSpeed / maxSpeed);
   }
 }
 
@@ -307,9 +308,14 @@ void Player::setPhysics(float accel, float fric, float maxSpd) {
 
 void Player::render() {
   glPushMatrix();
-  float bobOffset = sin(bobPhase) * bobAmount;
-  glTranslatef(x, y + bobOffset, z);
+  float bobOffset = sin(bobPhase) * 0.12f; // Increased bob amount (was 0.08)
+  // Lowered by 0.35f to ground feet, added bob
+  glTranslatef(x, y - 0.35f + bobOffset, z);
   glRotatef(yaw, 0, 1, 0); // Match movement direction
+
+  // Add sway (waddle) for natural running look
+  float sway = sin(bobPhase) * 2.5f;
+  glRotatef(sway, 0, 0, 1); // Z-axis sway
 
   if (damageCooldown > 0.0f && ((int)(damageCooldown * 10) % 2 == 0))
     glColor3f(1.0f, 0.3f, 0.3f);
