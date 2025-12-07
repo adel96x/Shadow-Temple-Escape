@@ -69,18 +69,26 @@ Level::~Level() {
   for (auto t : torches)
     delete t;
 
-  if (pillarModel)
-    delete pillarModel;
-  if (treeModel)
+  // Instance models are deleted here
+  if (treeModel) {
     delete treeModel;
-  if (rockModel)
+    treeModel = nullptr;
+  }
+  if (rockModel) {
     delete rockModel;
-  if (groundModel)
+    rockModel = nullptr;
+  }
+  if (groundModel) {
     delete groundModel;
-  if (cactusModel)
+    groundModel = nullptr;
+  }
+  if (cactusModel) {
     delete cactusModel;
+    cactusModel = nullptr;
+  }
 
-  // Static models are not deleted here
+  // STATIC models (pillarModel, etc.) are managed by cleanupCommonAssets()
+  // Do NOT delete them here, or they will be double-freed on restart
 }
 
 void Level::loadCommonAssets() {
@@ -777,11 +785,10 @@ void DesertLevel::render() {
 
   // Render Sun
   glPushMatrix();
-  glTranslatef(sunLight.position[0], sunLight.position[1],
-               sunLight.position[2]);
+  glTranslatef(0.0f, 80.0f, -40.0f); // Move closer and lower to be visible
   glDisable(GL_LIGHTING);
-  glColor3f(1.0f, 1.0f, 0.8f); // Bright yellow-white
-  glutSolidSphere(5.0f, 20, 20);
+  glColor3f(1.0f, 1.0f, 0.8f);   // Bright yellow-white
+  glutSolidSphere(8.0f, 20, 20); // Larger sun
   glEnable(GL_LIGHTING);
   glPopMatrix();
 }
