@@ -21,15 +21,15 @@ Player::Player(float startX, float startY, float startZ) {
   yaw = 0.0f;
 
   // Professional movement parameters
-  moveSpeed = 6.5f;   // Faster, more responsive movement
+  moveSpeed = 11.0f;  // Faster, more responsive movement
   turnSpeed = 900.0f; // Quicker turning for better control
 
   // Default Physics (Desert/Normal)
   velocityX = 0.0f;
   velocityZ = 0.0f;
-  acceleration = 60.0f; // High acceleration for snappy feel
+  acceleration = 80.0f; // High acceleration for snappy feel
   friction = 10.0f;     // High friction for quick stops
-  maxSpeed = 6.5f;
+  maxSpeed = 11.0f;
 
   // Improved jump physics
   jumpSpeed = 7.0f; // Higher jump

@@ -16,8 +16,8 @@ Camera::Camera() {
   upZ = 0.0f;
 
   // Zoomed out camera for better view
-  distanceBehind = 10.0f; // Much further back for wider view
-  heightAbove = 4.0f;     // Higher for better perspective
+  distanceBehind = 8.0f; // Closer for intimate action feel
+  heightAbove = 3.5f;    // Lower perspective
 
   yaw = 0.0f;
   pitch = 0.0f;

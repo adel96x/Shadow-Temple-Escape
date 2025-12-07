@@ -101,8 +101,10 @@ void startGame() {
   camera = new Camera();
 
   // Initialize player at starting position
-  player = new Player(0.0f, 1.0f, 0.0f);
+  // Spawn at the far side (z=70), facing the portal (z=-80)
+  player = new Player(0.0f, 1.0f, 70.0f);
   player->loadModel("assets/player.obj");
+  player->setYaw(180.0f); // Face North (towards -Z)
 
   // Load Level 1
   currentLevel = new DesertLevel();
@@ -394,7 +396,7 @@ void renderHUD() {
 
   // --- Start Message "LET'S GO!" (Enhanced) ---
   float timeSinceStart = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
-  if (timeSinceStart < 3.5f) {
+  if (timeSinceStart < 6.0f) {
     glPushMatrix();
     // Center of screen
     glTranslatef(WINDOW_WIDTH / 2.0f, WINDOW_HEIGHT / 2.0f, 0);

@@ -265,7 +265,8 @@ void DesertLevel::init(Player *p) {
   sunLight.specular = {1.0f, 1.0f, 1.0f, 1.0f};
 
   // Set Normal Physics (High acceleration, High friction)
-  player->setPhysics(60.0f, 10.0f, 6.5f);
+  // Faster movement as requested
+  player->setPhysics(80.0f, 10.0f, 11.0f);
 
   // Spawn level elements
   spawnOrbs();
@@ -276,13 +277,18 @@ void DesertLevel::init(Player *p) {
 
   // Spawn Torches (New Feature)
   torches.clear();
-  torches.push_back(new Torch(-4, 2, -38)); // Left of gate
-  torches.push_back(new Torch(4, 2, -38));  // Right of gate
-  torches.push_back(new Torch(10, 2, 0));   // Near start
-  torches.push_back(new Torch(-10, 2, 0));  // Near start
+  // Portal Gate Torches (At Z = -80)
+  torches.push_back(new Torch(-8, 2, -78));
+  torches.push_back(new Torch(8, 2, -78));
+  // Mid-way Torches
+  torches.push_back(new Torch(15, 2, 0));
+  torches.push_back(new Torch(-15, 2, 0));
+  // Start Area Torches
+  torches.push_back(new Torch(15, 2, 60));
+  torches.push_back(new Torch(-15, 2, 60));
 
   // Create portal
-  portal = new Portal(0, 1, -40);
+  portal = new Portal(0, 1, -80);
 
   loadCommonAssets();
 
@@ -370,75 +376,80 @@ void DesertLevel::spawnEnemies() {
 void DesertLevel::spawnObstacles() {
   obstacles.clear();
 
-  // Stone pillars
-  obstacles.push_back(new Obstacle(5, 0, 5, 2, 6, 2, PILLAR));
-  obstacles.push_back(new Obstacle(-8, 0, -8, 2, 6, 2, PILLAR));
-  obstacles.push_back(new Obstacle(15, 0, -5, 2, 6, 2, PILLAR));
-  obstacles.push_back(new Obstacle(-12, 0, 12, 2, 6, 2, PILLAR));
-  // Additional Pillars for grand entrance look
-  obstacles.push_back(new Obstacle(8, 0, -30, 2, 6, 2, PILLAR));
-  obstacles.push_back(new Obstacle(-8, 0, -30, 2, 6, 2, PILLAR));
-  obstacles.push_back(new Obstacle(8, 0, -20, 2, 6, 2, PILLAR));
-  obstacles.push_back(new Obstacle(-8, 0, -20, 2, 6, 2, PILLAR));
+  // --- ANCIENT WALLS & COLONNADES ---
+  // Increased map size from 45.0 to 90.0
+  float wallSize = 90.0f;
+  float wallThickness = 4.0f; // Thicker walls
+  float wallHeight = 15.0f;   // Taller walls
 
-  // ASSET PILLARS - Using the loaded model (different look)
-  // Repositioned to avoid overlap with existing objects
-  obstacles.push_back(
-      new Obstacle(40, 0, 10, 3, 6, 3, PILLAR_ASSET)); // Far Left
-  obstacles.push_back(
-      new Obstacle(-35, 0, -10, 3, 6, 3, PILLAR_ASSET)); // Far Right
-  obstacles.push_back(
-      new Obstacle(10, 0, -42, 3, 6, 3, PILLAR_ASSET)); // Near Gate Left
-  obstacles.push_back(
-      new Obstacle(-10, 0, -42, 3, 6, 3, PILLAR_ASSET)); // Near Gate Right
-
-  // Palm trees
-  obstacles.push_back(new Obstacle(30, 0, 10, 1.5f, 8, 1.5f, TREE));
-  obstacles.push_back(new Obstacle(-25, 0, -15, 1.5f, 8, 1.5f, TREE));
-
-  // Cacti - cylindrical collision
-  obstacles.push_back(new Obstacle(10, 0, -15, 1, 4, 1, CACTUS));
-  obstacles.push_back(new Obstacle(-5, 0, 25, 1, 4, 1, CACTUS));
-  obstacles.push_back(new Obstacle(20, 0, 15, 1, 4, 1, CACTUS));
-  obstacles.push_back(new Obstacle(-30, 0, -5, 1, 4, 1, CACTUS));
-
-  // Small realistic pyramids with SOLID collision - player CANNOT pass through
-  // Increased sizes and count as requested
-  obstacles.push_back(
-      new Obstacle(-30, 0, 30, 12, 10, 12, PYRAMID)); // Large pyramid
-  obstacles.push_back(
-      new Obstacle(35, 0, -30, 15, 12, 15, PYRAMID)); // Huge pyramid
-  obstacles.push_back(
-      new Obstacle(15, 0, 25, 10, 8, 10, PYRAMID)); // Medium pyramid
-  obstacles.push_back(
-      new Obstacle(-20, 0, -25, 14, 11, 14, PYRAMID)); // New Large pyramid
-  obstacles.push_back(
-      new Obstacle(30, 0, 35, 18, 14, 18,
-                   PYRAMID)); // Moved from (5,0,-35) to avoid Portal overlap
-  obstacles.push_back(
-      new Obstacle(-40, 0, 0, 10, 8, 10, PYRAMID)); // New Medium pyramid
-
-  // Add walls as obstacles for collision
-  float wallSize = 45.0f;
-  float wallThickness = 2.0f;
-  float wallHeight = 8.0f;
-
-  // North wall (z = -wallSize)
+  // Boundaries
+  // North (z = -wallSize)
   obstacles.push_back(new Obstacle(0, 0, -wallSize, wallSize * 2, wallHeight,
                                    wallThickness, WALL));
-  // South wall (z = +wallSize)
+  // South (z = +wallSize)
   obstacles.push_back(new Obstacle(0, 0, wallSize, wallSize * 2, wallHeight,
                                    wallThickness, WALL));
-  // West wall (x = -wallSize)
+  // West (x = -wallSize)
   obstacles.push_back(new Obstacle(-wallSize, 0, 0, wallThickness, wallHeight,
                                    wallSize * 2, WALL));
-  // East wall (x = +wallSize)
+  // East (x = +wallSize)
   obstacles.push_back(new Obstacle(wallSize, 0, 0, wallThickness, wallHeight,
                                    wallSize * 2, WALL));
 
-  // Spike traps
-  traps.push_back(new Trap(0, 0.1f, 10, SPIKE_TRAP));
-  traps.push_back(new Trap(18, 0.1f, -12, SPIKE_TRAP));
+  // Colonnades (Rows of pillars along the walls)
+  // East/West sides
+  for (float z = -wallSize + 10; z < wallSize - 5; z += 20) {
+    obstacles.push_back(
+        new Obstacle(wallSize - 8, 0, z, 3, 8, 3, PILLAR_ASSET));
+    obstacles.push_back(
+        new Obstacle(-wallSize + 8, 0, z, 3, 8, 3, PILLAR_ASSET));
+  }
+  // North/South sides
+  for (float x = -wallSize + 10; x < wallSize - 5; x += 20) {
+    if (abs(x) > 15) { // Leave gap for gate/spawn area
+      obstacles.push_back(new Obstacle(x, 0, -wallSize + 8, 3, 8, 3,
+                                       PILLAR_ASSET)); // North (near portal)
+      obstacles.push_back(new Obstacle(x, 0, wallSize - 8, 3, 8, 3,
+                                       PILLAR_ASSET)); // South (near spawn)
+    }
+  }
+
+  // --- CENTRAL RUINS ---
+  // Grand Entrance Pillars (Near Spawn)
+  obstacles.push_back(new Obstacle(15, 0, 50, 4, 12, 4, PILLAR));
+  obstacles.push_back(new Obstacle(-15, 0, 50, 4, 12, 4, PILLAR));
+
+  // Path to Portal (Pillars leading the way)
+  obstacles.push_back(new Obstacle(20, 0, 10, 3, 10, 3, PILLAR));
+  obstacles.push_back(new Obstacle(-20, 0, 10, 3, 10, 3, PILLAR));
+  obstacles.push_back(new Obstacle(20, 0, -30, 3, 10, 3, PILLAR));
+  obstacles.push_back(new Obstacle(-20, 0, -30, 3, 10, 3, PILLAR));
+
+  // --- PYRAMIDS ---
+  // Large pyramid - shifted
+  obstacles.push_back(new Obstacle(-45, 0, 20, 15, 12, 15, PYRAMID));
+  // Huge pyramid - far right
+  obstacles.push_back(new Obstacle(50, 0, -20, 18, 15, 18, PYRAMID));
+  // Medium pyramid
+  obstacles.push_back(new Obstacle(30, 0, 40, 12, 10, 12, PYRAMID));
+  // New Large pyramid
+  obstacles.push_back(new Obstacle(-50, 0, -50, 14, 11, 14, PYRAMID));
+
+  // --- NATURE ---
+  // Palm trees scattered
+  obstacles.push_back(new Obstacle(40, 0, 60, 2, 10, 2, TREE));
+  obstacles.push_back(new Obstacle(-40, 0, 60, 2, 10, 2, TREE));
+  obstacles.push_back(new Obstacle(60, 0, 10, 2, 10, 2, TREE));
+  obstacles.push_back(new Obstacle(-60, 0, -20, 2, 10, 2, TREE));
+
+  // Cacti
+  obstacles.push_back(new Obstacle(10, 0, 30, 1, 4, 1, CACTUS));
+  obstacles.push_back(new Obstacle(-5, 0, 45, 1, 4, 1, CACTUS));
+  obstacles.push_back(new Obstacle(70, 0, -70, 1, 4, 1, CACTUS));
+
+  // Spike traps (repositioned)
+  traps.push_back(new Trap(0, 0.1f, 0, SPIKE_TRAP));   // Center map
+  traps.push_back(new Trap(0, 0.1f, -40, SPIKE_TRAP)); // Nearer portal
 }
 
 void DesertLevel::update(float deltaTime) {
@@ -523,7 +534,8 @@ void DesertLevel::update(float deltaTime) {
   }
 
   // Map Boundaries (Simple box constraint)
-  float mapSize = 48.0f; // Slightly less than 50 to keep inside walls
+  // Expanded to match visual walls (90.0f)
+  float mapSize = 88.0f; // Slightly less than 90 to keep inside walls
   float px = player->getX();
   float pz = player->getZ();
   bool clamped = false;
@@ -675,7 +687,12 @@ void DesertLevel::render() {
   glDisable(GL_BLEND);
   glDepthMask(GL_TRUE);
 
-  renderDesertEnvironment();
+  // Render ground and skybox scaled for new map size (90.0)
+  // Rendering slightly larger (100.0) to avoid edges
+  renderGround(100.0f, sandTexture);
+  renderSkybox(0.5f, 0.7f, 0.9f);
+  // Walls at 90.0f
+  renderWalls(90.0f, 15.0f, desertWallTexture);
 
   // Render orbs
   for (auto orb : collectibles) {
@@ -709,7 +726,7 @@ void DesertLevel::render() {
         // Fallback
         glColor3f(0.5f, 0.5f, 0.5f);
         glScalef(1, 3, 1);
-        glutSolidCube(2.0f);
+        glutSolidCube(1.0f);
       }
       glPopMatrix();
     } else if (obs->type == TREE)
@@ -785,10 +802,11 @@ void DesertLevel::render() {
 
   // Render Sun
   glPushMatrix();
-  glTranslatef(0.0f, 80.0f, -40.0f); // Move closer and lower to be visible
+  glTranslatef(0.0f, 150.0f,
+               -120.0f); // Higher up and further back for grand scale
   glDisable(GL_LIGHTING);
-  glColor3f(1.0f, 1.0f, 0.8f);   // Bright yellow-white
-  glutSolidSphere(8.0f, 20, 20); // Larger sun
+  glColor3f(1.0f, 1.0f, 0.8f);    // Bright yellow-white
+  glutSolidSphere(15.0f, 20, 20); // Massive sun
   glEnable(GL_LIGHTING);
   glPopMatrix();
 }
@@ -1029,7 +1047,36 @@ void DesertLevel::renderOrb(Collectible *orb) {
 
 void DesertLevel::renderChest(Chest *chest) {
   glPushMatrix();
-  glTranslatef(chest->x, chest->y, chest->z);
+
+  // Floating Animation
+  float time = glutGet(GLUT_ELAPSED_TIME) / 1000.0f;
+  // Offset based on position to unsync chests
+  float bobOffset = sin(time * 2.0f + chest->x) * 0.3f;
+
+  glTranslatef(chest->x, chest->y + 0.5f + bobOffset,
+               chest->z); // Lift up slightly for floating effect
+
+  // Magical Particle Ring (Spinning)
+  if (!chest->opened) {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+    for (int i = 0; i < 8; i++) {
+      float angle = time * 2.0f + i * (2.0f * 3.14159f / 8.0f);
+      float r = 1.8f; // Radius
+      float px = sin(angle) * r;
+      float pz = cos(angle) * r;
+      float py = sin(time * 3.0f + i) * 0.5f; // Vertical variance
+
+      glPushMatrix();
+      glTranslatef(px, py, pz);
+      // Sparkle color (Gold/Magic)
+      glColor4f(1.0f, 0.9f, 0.4f, 0.8f);
+      glScalef(0.15f, 0.15f, 0.15f);
+      glutSolidOctahedron();
+      glPopMatrix();
+    }
+    glDisable(GL_BLEND);
+  }
 
   if (chestModel && chestModel->getWidth() > 0) {
     // Scale to appropriate size
@@ -1049,12 +1096,6 @@ void DesertLevel::renderChest(Chest *chest) {
     glPopMatrix();
 
     // Animate lid opening (Logic moved to update for frame-rate independence)
-    // if (chest->opened && chest->lidAngle < 90) {
-    //   chest->lidAngle += 2.0f;
-    // } else if (!chest->opened && chest->hasCoins) {
-    //   // Slightly ajar if it has coins
-    //   chest->lidAngle = 15.0f;
-    // }
     if (!chest->opened && chest->hasCoins) {
       chest->lidAngle = 15.0f;
     }
@@ -1073,8 +1114,12 @@ void DesertLevel::renderChest(Chest *chest) {
     if (!chest->opened && chest->hasOrb) {
       glEnable(GL_BLEND);
       glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-      glColor4f(1.0f, 0.84f, 0.0f, 0.3f); // Golden glow
-      glutSolidSphere(1.5f, 16, 16);
+
+      // Pulsing Glow
+      float pulse = 0.5f + 0.5f * sin(time * 4.0f);
+      glColor4f(1.0f, 0.84f, 0.0f, 0.2f + 0.2f * pulse); // Golden glow
+
+      glutSolidSphere(2.0f, 20, 20); // Larger sphere
       glDisable(GL_BLEND);
     }
   }
