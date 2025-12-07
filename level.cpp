@@ -1522,13 +1522,6 @@ void IceLevel::update(float deltaTime) {
       // Radius collision for other rounded objects
       float obsRadius = obs->width / 2.0f;
       if (player->checkCollision(obs->x, obs->z, obsRadius)) {
-        // DAMAGE LOGIC FOR SNOWMEN (ROCKS)
-        if (obs->type == ROCK && player->canTakeDamage()) {
-          player->takeDamage(10);
-          extern Camera *camera;
-          if (camera)
-            camera->triggerShake(0.3f, 0.2f);
-        }
         player->resolveCollision(obs->x, obs->z, obsRadius);
       }
     }

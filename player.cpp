@@ -58,6 +58,9 @@ Player::Player(float startX, float startY, float startZ) {
 
   playerModel = new Model();
   playerModel->load("assets/player.obj");
+
+  // Load skin texture (or fail silently with ID=0)
+  skinTexture = loadBMP("assets/player.bmp");
 }
 
 Player::~Player() {
@@ -363,18 +366,29 @@ void Player::render() {
              1.0f + landTimer * 0.2f); // Wide and short
   }
 
-  if (damageCooldown > 0.0f && ((int)(damageCooldown * 10) % 2 == 0))
+  if (damageCooldown > 0.0f && ((int)(damageCooldown * 10) % 2 == 0)) {
     glColor3f(1.0f, 0.3f, 0.3f);
-  else
-    glColor3f(1.0f, 1.0f, 1.0f);
+  } else {
+    // Enable skin texture if loaded
+    if (skinTexture.id != 0) {
+      glEnable(GL_TEXTURE_2D);
+      glBindTexture(GL_TEXTURE_2D, skinTexture.id);
+      glColor3f(1.0f, 1.0f, 1.0f); // White modulation for texture
+    } else {
+      glDisable(GL_TEXTURE_2D);
+      // Fallback Color: Tanned skin / Khaki look
+      glColor3f(0.85f, 0.75f, 0.65f); // Beige/Tan
+    }
+  }
 
   if (playerModel && playerModel->getWidth() > 0) {
     glPushMatrix();
-    glRotatef(-90, 1, 0, 0); // Flip to stand upright
+    glRotatef(-90, 1, 0, 0); // Correct orientation
     glScalef(0.1f, 0.1f, 0.1f);
     playerModel->render();
     glPopMatrix();
   } else {
+    // Fallback if model fails
     glColor3f(0.8f, 0.6f, 0.4f);
     GLUquadric *quad = gluNewQuadric();
     glRotatef(-90, 1, 0, 0);
@@ -402,6 +416,9 @@ void Player::render() {
 
     glDisable(GL_BLEND);
   }
+
+  // Disable texture after player render to avoid bleeding
+  glDisable(GL_TEXTURE_2D);
 
   glPopMatrix();
 }

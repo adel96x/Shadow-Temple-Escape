@@ -12,11 +12,14 @@
 #include <GL/glut.h>
 #endif
 #include "model.h"
+#include "utils.h"
 #include <cmath>
 
 class Player {
 private:
   Model *playerModel;
+  Texture skinTexture;
+
   // Position and orientation
   float x, y, z;
   float yaw;

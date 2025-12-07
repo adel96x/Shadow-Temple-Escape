@@ -377,7 +377,7 @@ inline void playSound(SoundEffect sound) {
     soundFile = "assets/damage.wav";
     break;
   case SOUND_FOOTSTEP:
-    soundFile = "assets/damage.wav"; // Placeholder thud
+    soundFile = "assets/footstep.wav";
     break;
   case SOUND_JUMP:
     soundFile = "assets/jump.wav";
