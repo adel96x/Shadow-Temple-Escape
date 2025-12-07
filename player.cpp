@@ -155,9 +155,40 @@ void Player::move(float forward, float strafe, float deltaTime,
     // Move in the direction of current yaw (smooth movement)
     float yawRad = yaw * PI / 180.0f;
 
-    // Apply acceleration based on input
-    float accelX = sin(yawRad) * acceleration;
-    float accelZ = cos(yawRad) * acceleration;
+    // In First Person (skipRotation), direction depends on forward/strafe
+    // inputs relative to Look Angle
+    float dirX, dirZ;
+
+    if (skipRotation) {
+      // Standard FPS Movement
+      // Forward vector (sin, cos) for this coordinate system
+      float fwdX = sin(yawRad);
+      float fwdZ = cos(yawRad);
+      // Right vector (cos, -sin)
+      float rightX = cos(yawRad); // Derived from rotating forward -90 or +90
+      float rightZ = -sin(yawRad);
+
+      // Combine inputs
+      // forward/strafe are +/- 1.0
+      dirX = (fwdX * forward) + (rightX * strafe);
+      dirZ = (fwdZ * forward) + (rightZ * strafe);
+
+      // Normalize if moving diagonally
+      float len = sqrt(dirX * dirX + dirZ * dirZ);
+      if (len > 0) {
+        dirX /= len;
+        dirZ /= len;
+      }
+    } else {
+      // Third Person: Just move forward in the direction we are currently
+      // facing
+      dirX = sin(yawRad);
+      dirZ = cos(yawRad);
+    }
+
+    // Apply acceleration based on calculated direction
+    float accelX = dirX * acceleration;
+    float accelZ = dirZ * acceleration;
 
     velocityX += accelX * deltaTime;
     velocityZ += accelZ * deltaTime;

@@ -123,44 +123,27 @@ void nextLevel() {
   }
 }
 
-void restartLevel() {
-  if (currentLevel) {
-    currentLevel->reset();
-
-    // Reset player to initial spawn of the current level
-    if (currentState == LEVEL1) {
-      player->resetPosition(0.0f, 1.0f, 0.0f);
-    } else if (currentState == LEVEL2) {
-      // Keep player stats if just restarting level 2?
-      // Or full reset? User said "restart button not working well".
-      // Usually restart means try again.
-      player->resetPosition(0.0f, 1.0f, 0.0f);
-      // If it's a full game restart, we should reset health too.
-      // But 'R' usually means "retry level".
-      // Let's ensure health is reset if they died.
-      if (!player->isAlive()) {
-        player->reset();
-      }
-    }
-
-    // Reset camera
-    camera->setMode(THIRD_PERSON);
-  }
-}
-
 void cleanup() {
-  // Stop background music
   cleanupMusic();
-
   if (camera)
     delete camera;
   if (player)
     delete player;
   if (currentLevel)
     delete currentLevel;
-
   Level::cleanupCommonAssets();
+  // Nullify pointers to be safe
+  camera = nullptr;
+  player = nullptr;
+  currentLevel = nullptr;
 }
+
+void fullReset() {
+  cleanup();
+  startGame();
+}
+
+void restartLevel() { fullReset(); }
 
 // ============================================================================
 // UPDATE LOGIC
@@ -430,8 +413,8 @@ void renderHUD() {
 
     glScalef(scale * 0.5f, scale * 0.5f, 1.0f); // Scale down stroke font
 
-    // Centering text (approximate width of "LET'S GO!" is ~600 units in stroke
-    // font)
+    // Centering text (approximate width of "LET'S GO!" is ~600 units in
+    // stroke font)
     glTranslatef(-300, -50, 0);
 
     glLineWidth(3.0f);
@@ -488,7 +471,7 @@ void renderPaused() {
   renderText(WINDOW_WIDTH / 2.0f - 100, WINDOW_HEIGHT / 2.0f - 50,
              "Press ESC to Resume");
   renderText(WINDOW_WIDTH / 2.0f - 80, WINDOW_HEIGHT / 2.0f - 80,
-             "Press R to Restart");
+             "Press R to Restart Game");
 }
 
 void renderWin() {
@@ -590,7 +573,7 @@ void keyboard(unsigned char key, int x, int y) {
       currentLevel->interact(player->getX(), player->getY(), player->getZ());
     }
     if (key == 'r' || key == 'R') {
-      restartLevel();
+      fullReset();
     }
   } else if (currentState == WIN) {
     if (key == 13) { // ENTER - restart
@@ -599,8 +582,7 @@ void keyboard(unsigned char key, int x, int y) {
     }
   } else if (currentState == GAME_OVER) {
     if (key == 'r' || key == 'R') {
-      restartLevel();
-      currentState = currentLevel->isDesert() ? LEVEL1 : LEVEL2;
+      fullReset();
     }
   }
 }

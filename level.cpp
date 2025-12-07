@@ -321,6 +321,42 @@ void DesertLevel::spawnEnemies() {
   scorpion2->patrolPoints.push_back({-25, 0.5f, 10});
   scorpion2->patrolPoints.push_back({-25, 0.5f, -10});
   enemies.push_back(scorpion2);
+
+  // NEW ENEMIES (SNAKES)
+  // 3. Guarding the new pillars (Far Left)
+  Enemy *snake3 = new Enemy(35, 0.5f, 10);
+  snake3->patrolPoints.push_back({35, 0.5f, 10});
+  snake3->patrolPoints.push_back({45, 0.5f, 10});
+  snake3->patrolPoints.push_back({40, 0.5f, 0});
+  enemies.push_back(snake3);
+
+  // 4. Guarding the new pillars (Far Right)
+  Enemy *snake4 = new Enemy(-35, 0.5f, -15);
+  snake4->patrolPoints.push_back({-35, 0.5f, -15});
+  snake4->patrolPoints.push_back({-30, 0.5f, -5});
+  snake4->patrolPoints.push_back({-40, 0.5f, -5});
+  enemies.push_back(snake4);
+
+  // 5. Roaming near the entrance (Left)
+  Enemy *snake5 = new Enemy(5, 0.5f, -30);
+  snake5->patrolPoints.push_back({5, 0.5f, -30});
+  snake5->patrolPoints.push_back({15, 0.5f, -35});
+  snake5->patrolPoints.push_back({5, 0.5f, -40});
+  enemies.push_back(snake5);
+
+  // 6. Roaming near the entrance (Right)
+  Enemy *snake6 = new Enemy(-5, 0.5f, -30);
+  snake6->patrolPoints.push_back({-5, 0.5f, -30});
+  snake6->patrolPoints.push_back({-15, 0.5f, -35});
+  snake6->patrolPoints.push_back({-5, 0.5f, -40});
+  enemies.push_back(snake6);
+
+  // 7. Exploring the back area
+  Enemy *snake7 = new Enemy(0, 0.5f, 30);
+  snake7->patrolPoints.push_back({0, 0.5f, 30});
+  snake7->patrolPoints.push_back({10, 0.5f, 40});
+  snake7->patrolPoints.push_back({-10, 0.5f, 40});
+  enemies.push_back(snake7);
 }
 
 void DesertLevel::spawnObstacles() {
