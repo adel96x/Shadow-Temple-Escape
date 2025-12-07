@@ -52,6 +52,10 @@ Player::Player(float startX, float startY, float startZ) {
   damageFlashTimer = 0.0f;
   alive = true;
 
+  footstepTimer = 0.0f;
+  landTimer = 0.0f;
+  wasGrounded = true;
+
   playerModel = new Model();
   playerModel->load("assets/player.obj");
 }
@@ -70,21 +74,34 @@ void Player::update(float deltaTime) {
   if (!isGrounded || isJumping) {
     velocityY += gravity * deltaTime;
     y += velocityY * deltaTime;
+    wasGrounded = false;
 
     if (y <= 1.0f) {
       y = 1.0f;
       velocityY = 0.0f;
       isJumping = false;
       isGrounded = true;
+
+      // Landing Event
+      if (!wasGrounded) {
+        playSound(SOUND_FOOTSTEP); // Thud
+        landTimer = 0.2f;          // Crouch for 0.2s
+      }
     } else {
       isGrounded = false;
     }
+  } else {
+    wasGrounded = true;
   }
 
   if (damageCooldown > 0.0f)
     damageCooldown -= deltaTime;
   if (damageFlashTimer > 0.0f)
     damageFlashTimer -= deltaTime;
+  if (glowTimer > 0.0f)
+    glowTimer -= deltaTime;
+  if (landTimer > 0.0f)
+    landTimer -= deltaTime;
 
   // Apply velocity to position
   x += velocityX * deltaTime;
@@ -203,6 +220,15 @@ void Player::move(float forward, float strafe, float deltaTime,
     // Update head bob animation
     // Faster bob for clearer step rhythm
     bobPhase += deltaTime * 18.0f * (currentSpeed / maxSpeed);
+
+    // Footstep Sound
+    if (isGrounded) {
+      footstepTimer -= deltaTime * (currentSpeed / maxSpeed);
+      if (footstepTimer <= 0.0f) {
+        footstepTimer = 0.35f; // Step every 0.35s at full speed
+        playSound(SOUND_FOOTSTEP);
+      }
+    }
   }
 }
 
@@ -211,6 +237,7 @@ void Player::jump() {
     velocityY = jumpSpeed;
     isJumping = true;
     isGrounded = false;
+    playSound(SOUND_JUMP);
   }
 }
 
@@ -227,7 +254,14 @@ void Player::takeDamage(int amount) {
   }
 }
 
-void Player::collectOrb() { orbsCollected++; }
+void Player::collectOrb() {
+  orbsCollected++;
+  triggerGlow();
+}
+
+void Player::triggerGlow() {
+  glowTimer = 1.0f; // 1 second glow
+}
 
 void Player::reset() {
   x = initialX;
@@ -242,6 +276,9 @@ void Player::reset() {
   orbsCollected = 0;
   damageCooldown = 0.0f;
   damageFlashTimer = 0.0f;
+  footstepTimer = 0.0f;
+  landTimer = 0.0f;
+  wasGrounded = true;
 }
 
 void Player::resetPosition(float newX, float newY, float newZ) {
@@ -317,6 +354,15 @@ void Player::render() {
   float sway = sin(bobPhase) * 2.5f;
   glRotatef(sway, 0, 0, 1); // Z-axis sway
 
+  // Landing Crouch / Squash
+  if (landTimer > 0.0f) {
+    landTimer -= 0.016f; // manual tick inside render? better to move to update,
+                         // but this is visual only
+    float squash = 1.0f - (landTimer * 0.5f); // Squash down
+    glScalef(1.0f + landTimer * 0.2f, squash,
+             1.0f + landTimer * 0.2f); // Wide and short
+  }
+
   if (damageCooldown > 0.0f && ((int)(damageCooldown * 10) % 2 == 0))
     glColor3f(1.0f, 0.3f, 0.3f);
   else
@@ -340,6 +386,21 @@ void Player::render() {
     glScalef(0.5f, 0.6f, 0.3f);
     glutSolidCube(1.0f);
     gluDeleteQuadric(quad);
+  }
+
+  // Render Glow Effect
+  if (glowTimer > 0.0f) {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    float alpha = glowTimer;                    // Fade out
+    glColor4f(1.0f, 0.84f, 0.0f, alpha * 0.5f); // Gold glow
+
+    glPushMatrix();
+    glTranslatef(0, height * 0.5f, 0); // Center on player
+    glutSolidSphere(1.0f, 16, 16);
+    glPopMatrix();
+
+    glDisable(GL_BLEND);
   }
 
   glPopMatrix();

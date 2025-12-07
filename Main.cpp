@@ -464,6 +464,24 @@ void renderHUD() {
     glDisable(GL_BLEND);
   }
 
+  // --- White Fade Exit Transition ---
+  float exitProgress = currentLevel->getExitProgress();
+  if (exitProgress > 0.0f) {
+    if (exitProgress > 1.0f)
+      exitProgress = 1.0f;
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glColor4f(1.0f, 1.0f, 1.0f, exitProgress);
+    glBegin(GL_QUADS);
+    glVertex2f(0, 0);
+    glVertex2f(WINDOW_WIDTH, 0);
+    glVertex2f(WINDOW_WIDTH, WINDOW_HEIGHT);
+    glVertex2f(0, WINDOW_HEIGHT);
+    glEnd();
+    glDisable(GL_BLEND);
+  }
+
   // Restore state
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_LIGHTING);

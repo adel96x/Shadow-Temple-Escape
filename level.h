@@ -29,10 +29,13 @@ struct Collectible {
 
   bool isSpawning;
   float spawnTimer;
+  bool isCollecting;
+  float collectTimer;
 
   Collectible(float px, float py, float pz)
       : x(px), y(py), z(pz), collected(false), rotation(0), bobPhase(0),
-        radius(0.5f), isSpawning(false), spawnTimer(0.0f) {}
+        radius(0.5f), isSpawning(false), spawnTimer(0.0f), isCollecting(false),
+        collectTimer(0.0f) {}
 };
 
 struct Enemy {
@@ -122,6 +125,9 @@ protected:
   std::vector<Torch *> torches; // New torches vector
   bool levelComplete;
 
+  bool isExiting;
+  float exitTimer;
+
   // Lighting
   LightSource sunLight;
   std::vector<LightSource> lights;
@@ -147,6 +153,10 @@ public:
 
   Level();
   virtual ~Level();
+
+  float getExitProgress() const {
+    return (exitTimer > 0.0f) ? (exitTimer / 2.0f) : 0.0f; // 2 seconds fade
+  }
 
   virtual void init(Player *p) = 0;
   virtual void update(float deltaTime) = 0;
@@ -232,6 +242,7 @@ class IceLevel : public Level {
 private:
   float survivalTimer;
   float maxTime;
+  bool victoryPlayed;
   float icicleSpawnTimer;
   float icicleSpawnInterval;
 

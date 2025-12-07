@@ -50,6 +50,11 @@ private:
   float bobAmount;
   float damageCooldown;
   float damageFlashTimer;
+  float glowTimer;
+
+  float footstepTimer;
+  float landTimer;
+  bool wasGrounded;
 
   float initialX, initialY, initialZ;
 
@@ -65,6 +70,7 @@ public:
   void jump();
   void takeDamage(int amount);
   void collectOrb();
+  void triggerGlow();
   void reset();
   void resetPosition(float newX, float newY, float newZ);
   void setPosition(float newX, float newY, float newZ);
@@ -89,6 +95,8 @@ public:
   int getOrbsCollected() const { return orbsCollected; }
   bool isAlive() const { return alive; }
   float getDamageFlashTimer() const { return damageFlashTimer; }
+  float getGlowTimer() const { return glowTimer; }
+  float getLandTimer() const { return landTimer; }
   bool canTakeDamage() const { return damageCooldown <= 0.0f; }
 };
 

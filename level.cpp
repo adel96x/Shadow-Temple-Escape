@@ -53,6 +53,8 @@ Level::Level() {
   player = nullptr;
   portal = nullptr;
   levelComplete = false;
+  isExiting = false;
+  exitTimer = 0.0f;
 }
 
 Level::~Level() {
@@ -486,6 +488,16 @@ void DesertLevel::update(float deltaTime) {
         orb->y = 1.5f; // Final height
       }
     }
+
+    // Update Orb Collection Animation
+    if (orb->isCollecting) {
+      orb->collectTimer += deltaTime;
+      if (orb->collectTimer > 0.5f) { // Animation duration
+        orb->collected = true;
+        orb->isCollecting = false;
+        player->collectOrb();
+      }
+    }
   }
 
   // Check trap collisions
@@ -529,6 +541,18 @@ void DesertLevel::update(float deltaTime) {
 
     // Check if player enters portal
     if (player->checkCollision(portal->x, portal->z, portal->radius)) {
+      if (!isExiting) {
+        isExiting = true;
+        playSound(SOUND_VICTORY);
+        // Could play Teleport sound here too
+      }
+    }
+  }
+
+  if (isExiting) {
+    exitTimer += deltaTime;
+    // Fade out player? Or just screen fade handled in render.
+    if (exitTimer > 2.0f) {
       levelComplete = true;
     }
   }
@@ -563,23 +587,39 @@ void DesertLevel::update(float deltaTime) {
 }
 
 void DesertLevel::updateDayNightCycle(float deltaTime) {
-  timeOfDay += daySpeed * deltaTime;
-  if (timeOfDay > 2.0f * PI)
-    timeOfDay -= 2.0f * PI;
+  timeOfDay += deltaTime * daySpeed;
+  if (timeOfDay > 2 * PI)
+    timeOfDay -= 2 * PI;
 
-  // Update sun color based on time
-  float sunFactor = (sin(timeOfDay) + 1.0f) / 2.0f;
-  sunLight.diffuse[0] = 0.5f + 0.5f * sunFactor;
-  sunLight.diffuse[1] = 0.4f + 0.4f * sunFactor;
-  sunLight.diffuse[2] = 0.3f + 0.2f * sunFactor;
+  // Calculate sun intensity and color based on time of day
+  float sunHeight = sin(timeOfDay);
+
+  // Day (0 to PI) / Night (PI to 2PI)
+  if (sunHeight > 0) {
+    // Daylight Colors
+    if (sunHeight < 0.3f) { // Sunrise/Sunset (Orange/Red)
+      sunLight.diffuse = {1.0f, 0.5f + sunHeight, 0.2f, 1.0f};
+      sunLight.ambient = {0.3f, 0.2f, 0.2f, 1.0f};
+    } else { // Noon (White/Bright)
+      sunLight.diffuse = {1.0f, 1.0f, 0.9f, 1.0f};
+      sunLight.ambient = {0.4f, 0.4f, 0.4f, 1.0f};
+    }
+  } else {
+    // Night Colors (Blueish)
+    sunLight.diffuse = {0.1f, 0.1f, 0.3f, 1.0f};
+    sunLight.ambient = {0.05f, 0.05f, 0.1f, 1.0f};
+  }
+
+  // Update Light Position (Move across sky)
+  sunLight.position = {0 + cos(timeOfDay) * 100.0f, 50.0f * abs(sin(timeOfDay)),
+                       50.0f * sin(timeOfDay), 1.0f};
 }
 
 void DesertLevel::checkOrbCollection() {
   for (auto orb : collectibles) {
-    if (!orb->collected &&
+    if (!orb->collected && !orb->isCollecting &&
         player->checkCollision(orb->x, orb->z, orb->radius)) {
-      orb->collected = true;
-      player->collectOrb();
+      orb->isCollecting = true;
       playSound(SOUND_COLLECT_ORB);
     }
   }
@@ -615,6 +655,8 @@ void DesertLevel::checkEnemyCollision() {
         extern Camera *camera;
         if (camera)
           camera->triggerShake(0.5f, 0.3f);
+
+        playSound(SOUND_ENEMY_GROWL);
 
         // Trigger enemy reaction
         enemy->isHit = true;
@@ -1025,13 +1067,23 @@ void DesertLevel::renderRock(float x, float y, float z) {
 }
 
 void DesertLevel::renderOrb(Collectible *orb) {
-  orb->rotation += 1.0f;
-  orb->bobPhase += 0.05f;
-  float bobOffset = sin(orb->bobPhase) * 0.3f;
-
   glPushMatrix();
-  glTranslatef(orb->x, orb->y + bobOffset, orb->z);
-  glRotatef(orb->rotation, 0, 1, 0);
+  glTranslatef(orb->x, orb->y, orb->z);
+
+  // Animation: Bobbing and Rotating
+  float rotation = orb->rotation + glutGet(GLUT_ELAPSED_TIME) * 0.1f;
+  float bob = sin(glutGet(GLUT_ELAPSED_TIME) * 0.003f) * 0.2f;
+
+  if (orb->isCollecting) {
+    // Scale up and spin fast
+    float scale = 1.0f + (orb->collectTimer / 0.5f) * 2.0f;
+    glScalef(scale, scale, scale);
+    rotation *= 10.0f; // Fast spin
+  } else {
+    glTranslatef(0, bob, 0);
+  }
+
+  glRotatef(rotation, 0, 1, 0);
 
   glColor3f(1.0f, 0.84f, 0.0f);
   glutSolidSphere(orb->radius, 20, 20);
@@ -1236,6 +1288,7 @@ void DesertLevel::renderPortal() {
 IceLevel::IceLevel() : Level() {
   survivalTimer = 0.0f;
   maxTime = 60.0f;
+  victoryPlayed = false;
   icicleSpawnTimer = 0.0f;
   icicleSpawnInterval = 3.0f;
 }
@@ -1363,6 +1416,7 @@ void IceLevel::spawnIcicle() {
 
   Trap *icicle = new Trap(x, 15, z, FALLING_ICICLE);
   icicle->showWarning = true;
+  playSound(SOUND_ICICLE_CRACK); // Warning sound
   traps.push_back(icicle);
 }
 
@@ -1421,7 +1475,18 @@ void IceLevel::update(float deltaTime) {
 
   if (portal->active &&
       player->checkCollision(portal->x, portal->z, portal->radius)) {
-    levelComplete = true;
+    if (!isExiting) {
+      isExiting = true;
+      // playSound(SOUND_VICTORY); // Already played by timer logic in IceLevel,
+      // but let's confirm
+    }
+  }
+
+  if (isExiting) {
+    exitTimer += deltaTime;
+    if (exitTimer > 2.0f) {
+      levelComplete = true;
+    }
   }
 
   // Update snow particles
@@ -1452,6 +1517,10 @@ void IceLevel::updateTimer(float deltaTime) {
 
   if (survivalTimer >= maxTime && !portal->active) {
     portal->active = true;
+    if (!victoryPlayed) {
+      playSound(SOUND_VICTORY);
+      victoryPlayed = true;
+    }
   }
 
   if (portal->active) {
@@ -1469,6 +1538,7 @@ void IceLevel::updateIcicles(float deltaTime) {
       if (icicle->warningTime <= 0) {
         icicle->showWarning = false;
         icicle->active = true;
+        playSound(SOUND_ICICLE_FALL); // Falling sound
       }
     } else if (icicle->active) {
       icicle->y -= 15.0f * deltaTime;
@@ -1488,6 +1558,21 @@ void IceLevel::updateIcicles(float deltaTime) {
           if (camera)
             camera->triggerShake(0.5f, 0.5f);
 
+          traps.erase(traps.begin() + i);
+        } else if (icicle->y <= 0.5f) {
+          // Hit ground - Shatter logic
+          playSound(SOUND_ICICLE_CRACK); // Shatter sound
+          // Spawn shatter particles (simple burst using existing snow system
+          // for now, or just logic)
+          for (int j = 0; j < 20; j++) {
+            Snowflake s;
+            s.x = icicle->x + (rand() % 20 - 10) / 20.0f;
+            s.y = 0.5f;
+            s.z = icicle->z + (rand() % 20 - 10) / 20.0f;
+            s.speed = -5.0f; // Fly up? No, simpler to just delete for now or
+                             // reuse particle system if accessible
+            // Actually, we can just delete. The sound is the key feedback.
+          }
           traps.erase(traps.begin() + i);
         }
       }
@@ -1558,6 +1643,7 @@ void IceLevel::interact(float px, float py, float pz) {
 
 void IceLevel::reset() {
   levelComplete = false;
+  victoryPlayed = false;
   survivalTimer = 0.0f;
   icicleSpawnTimer = 0.0f;
   icicleSpawnInterval = 3.0f;
@@ -1822,6 +1908,48 @@ void IceLevel::render() {
   if (portal)
     renderPortal();
   renderTimer3D();
+
+  // --- RED WARNING LIGHT FOR ICICLES (GL_LIGHT2) ---
+  bool warningActive = false;
+  float wx, wz;
+  for (auto icicle : traps) {
+    if (icicle->showWarning) {
+      warningActive = true;
+      wx = icicle->x;
+      wz = icicle->z;
+      break; // One light for now
+    }
+  }
+
+  if (warningActive) {
+    glEnable(GL_LIGHT2);
+    float pulse = 0.5f + 0.5f * sin(glutGet(GLUT_ELAPSED_TIME) * 0.02f);
+    GLfloat lightPos[] = {wx, 2.0f, wz, 1.0f};
+    GLfloat lightColor[] = {1.0f * pulse, 0.0f, 0.0f, 1.0f};
+    glLightfv(GL_LIGHT2, GL_POSITION, lightPos);
+    glLightfv(GL_LIGHT2, GL_DIFFUSE, lightColor);
+    glLightfv(GL_LIGHT2, GL_SPECULAR, lightColor);
+
+    // Attenuation to keep it local
+    glLightf(GL_LIGHT2, GL_CONSTANT_ATTENUATION, 1.0f);
+    glLightf(GL_LIGHT2, GL_LINEAR_ATTENUATION, 0.5f);
+    glLightf(GL_LIGHT2, GL_QUADRATIC_ATTENUATION, 0.2f);
+  } else {
+    glDisable(GL_LIGHT2);
+  }
+
+  // --- PORTAL PULSING LIGHT (GL_LIGHT3) ---
+  if (portal && portal->active) {
+    glEnable(GL_LIGHT3);
+    float pulse = 0.8f + 0.2f * sin(glutGet(GLUT_ELAPSED_TIME) * 0.005f);
+    GLfloat lightPos[] = {portal->x, portal->y + 2.0f, portal->z, 1.0f};
+    GLfloat lightColor[] = {1.0f * pulse, 0.8f, 0.2f, 1.0f}; // Gold
+    glLightfv(GL_LIGHT3, GL_POSITION, lightPos);
+    glLightfv(GL_LIGHT3, GL_DIFFUSE, lightColor);
+    glLightf(GL_LIGHT3, GL_LINEAR_ATTENUATION, 0.1f);
+  } else {
+    glDisable(GL_LIGHT3);
+  }
 }
 
 void IceLevel::renderIceEnvironment() {

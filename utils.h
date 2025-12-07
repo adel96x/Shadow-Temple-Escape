@@ -376,7 +376,8 @@ inline void playSound(SoundEffect sound) {
     soundFile = "assets/damage.wav";
     break;
   case SOUND_FOOTSTEP:
-    return; // Too frequent for system()
+    soundFile = "assets/damage.wav"; // Placeholder thud
+    break;
   case SOUND_JUMP:
     soundFile = "assets/jump.wav";
     break;
