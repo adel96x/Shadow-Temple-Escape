@@ -1319,7 +1319,7 @@ void IceLevel::init(Player *p) {
   loadCommonAssets();
 
   // Load ice-specific textures
-  snowTexture = loadBMP("assets/snow.bmp");
+  snowTexture = loadBMP("assets/snow_ground.bmp");
   iceWallTexture = loadBMP("assets/ice_wall.bmp");
 
   // Initialize snow particles
@@ -1389,14 +1389,48 @@ void IceLevel::spawnEnemies() {
 void IceLevel::spawnObstacles() {
   obstacles.clear();
 
-  obstacles.push_back(new Obstacle(10, 0, 10, 2, 5, 2, CHRISTMAS_TREE));
-  obstacles.push_back(new Obstacle(-10, 0, -10, 2, 5, 2, CHRISTMAS_TREE));
-  obstacles.push_back(new Obstacle(20, 0, -15, 2, 5, 2, CHRISTMAS_TREE));
-  obstacles.push_back(new Obstacle(-18, 0, 8, 2, 5, 2, CHRISTMAS_TREE));
+  // Mix of Ice Pillars and Christmas Trees
+  obstacles.push_back(new Obstacle(10, 0, 10, 2, 6, 2, ICE_PILLAR));
+  obstacles.push_back(new Obstacle(-12, 0, -12, 2, 6, 2, ICE_PILLAR));
+  obstacles.push_back(new Obstacle(20, 0, -15, 2, 6, 2, ICE_PILLAR));
+  obstacles.push_back(new Obstacle(-18, 0, 8, 2, 6, 2, ICE_PILLAR));
+  obstacles.push_back(new Obstacle(5, 0, -25, 2, 6, 2, ICE_PILLAR));
+  obstacles.push_back(new Obstacle(-25, 0, 5, 2, 6, 2, ICE_PILLAR));
+
+  // Christmas Trees (Nature decoration)
+  obstacles.push_back(new Obstacle(15, 0, 5, 2, 5, 2, CHRISTMAS_TREE));
+  obstacles.push_back(new Obstacle(-5, 0, 15, 2, 5, 2, CHRISTMAS_TREE));
+  obstacles.push_back(new Obstacle(-22, 0, -22, 2, 5, 2, CHRISTMAS_TREE));
+  obstacles.push_back(new Obstacle(22, 0, 22, 2, 5, 2, CHRISTMAS_TREE));
+
+  // Snowmen (Rocks)
   obstacles.push_back(new Obstacle(15, 0, 20, 2, 4, 2, ROCK));   // Snowman 1
   obstacles.push_back(new Obstacle(-20, 0, 15, 2, 4, 2, ROCK));  // Snowman 2
   obstacles.push_back(new Obstacle(25, 0, -10, 2, 4, 2, ROCK));  // Snowman 3
   obstacles.push_back(new Obstacle(-15, 0, -20, 2, 4, 2, ROCK)); // Snowman 4
+
+  // Glowing Crystals embedded in walls
+  obstacles.push_back(new Obstacle(35, 2, 35, 1, 1, 1, CRYSTAL));
+  obstacles.push_back(new Obstacle(-35, 2, 35, 1, 1, 1, CRYSTAL));
+  obstacles.push_back(new Obstacle(35, 2, -35, 1, 1, 1, CRYSTAL));
+  obstacles.push_back(new Obstacle(-35, 2, -35, 1, 1, 1, CRYSTAL));
+
+  // --- ARENA WALLS (Rigid Boundaries) ---
+  float wallSize = 45.0f;
+  float wallHeight = 15.0f;
+  float wallThickness = 4.0f;
+  // North (z = -wallSize)
+  obstacles.push_back(new Obstacle(0, 0, -wallSize, wallSize * 2, wallHeight,
+                                   wallThickness, WALL));
+  // South (z = +wallSize)
+  obstacles.push_back(new Obstacle(0, 0, wallSize, wallSize * 2, wallHeight,
+                                   wallThickness, WALL));
+  // West (x = -wallSize)
+  obstacles.push_back(new Obstacle(-wallSize, 0, 0, wallThickness, wallHeight,
+                                   wallSize * 2, WALL));
+  // East (x = +wallSize)
+  obstacles.push_back(new Obstacle(wallSize, 0, 0, wallThickness, wallHeight,
+                                   wallSize * 2, WALL));
 
   // Spawn many ground traps (SPIKE_TRAP) - increased to 50 for harder
   // gameplay
@@ -1453,24 +1487,50 @@ void IceLevel::update(float deltaTime) {
   }
 
   for (auto obs : obstacles) {
-    float obsRadius = obs->width / 2.0f;
-    if (player->checkCollision(obs->x, obs->z, obsRadius)) {
-      // DAMAGE LOGIC FOR SNOWMEN (ROCKS)
-      if (obs->type == ROCK && player->canTakeDamage()) {
-        player->takeDamage(10);
-        // Knockback logic could be added here similar to enemies
-        float dx = obs->x - player->getX();
-        float dz = obs->z - player->getZ();
-        // Simple push back
-        if (abs(dx) > 0.1f || abs(dz) > 0.1f) {
-          // Basic push away not implemented here, but damage is key request
+    if (obs->type == WALL) {
+      // Box collision for Walls
+      player->resolveCollisionWithBox(obs->x, obs->z, obs->width, obs->depth);
+    } else {
+      // Radius collision for other rounded objects
+      float obsRadius = obs->width / 2.0f;
+      if (player->checkCollision(obs->x, obs->z, obsRadius)) {
+        // DAMAGE LOGIC FOR SNOWMEN (ROCKS)
+        if (obs->type == ROCK && player->canTakeDamage()) {
+          player->takeDamage(10);
+          extern Camera *camera;
+          if (camera)
+            camera->triggerShake(0.3f, 0.2f);
         }
-        extern Camera *camera;
-        if (camera)
-          camera->triggerShake(0.3f, 0.2f);
+        player->resolveCollision(obs->x, obs->z, obsRadius);
       }
-      player->resolveCollision(obs->x, obs->z, obsRadius);
     }
+  }
+
+  // --- Map Boundary Clamping ---
+  float mapSize = 44.0f; // Slightly less than 45 to keep inside visual walls
+  float px = player->getX();
+  float pz = player->getZ();
+  bool clamped = false;
+
+  if (px > mapSize) {
+    px = mapSize;
+    clamped = true;
+  }
+  if (px < -mapSize) {
+    px = -mapSize;
+    clamped = true;
+  }
+  if (pz > mapSize) {
+    pz = mapSize;
+    clamped = true;
+  }
+  if (pz < -mapSize) {
+    pz = -mapSize;
+    clamped = true;
+  }
+
+  if (clamped) {
+    player->setPosition(px, player->getY(), pz);
   }
 
   if (portal->active &&
@@ -1661,24 +1721,66 @@ void IceLevel::renderIcePillar(float x, float y, float z) {
   glPushMatrix();
   glTranslatef(x, y, z);
 
-  glColor3f(0.7f, 0.85f, 0.95f);
-  GLUquadric *quad = gluNewQuadric();
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  // Crystalline pillar shape
-  for (int i = 0; i < 6; i++) {
+  // Professional Ice Material
+  GLfloat iceSpec[] = {1.0f, 1.0f, 1.0f, 1.0f};
+  glMaterialfv(GL_FRONT, GL_SPECULAR, iceSpec);
+  glMaterialf(GL_FRONT, GL_SHININESS, 120.0f);
+
+  // Icy Blue Color with transparency
+  glColor4f(0.5f, 0.7f, 1.0f, 0.7f);
+
+  // 1. Central Main Shard (Large Hexagonal Crystal)
+  glPushMatrix();
+  glScalef(1.2f, 1.5f, 1.2f);
+  glRotatef(-90, 1, 0, 0); // Upright
+
+  // Base shaft
+  GLUquadric *quad = gluNewQuadric();
+  gluCylinder(quad, 1.0f, 0.6f, 4.0f, 6, 1); // Tapering slightly
+
+  // Pointed Top
+  glPushMatrix();
+  glTranslatef(0, 0, 4.0f);
+  glutSolidCone(0.6f, 1.5f, 6, 1);
+  glPopMatrix();
+
+  gluDeleteQuadric(quad);
+  glPopMatrix();
+
+  // 2. Surrounding Crystal Clusters
+  for (int i = 0; i < 5; i++) {
     glPushMatrix();
-    glRotatef(i * 60.0f, 0, 1, 0);
-    glTranslatef(0.5f, 2.5f, 0);
-    glScalef(0.2f, 2.5f, 0.2f);
-    glutSolidCube(1.0f);
+    float angle = i * 72.0f;
+    glRotatef(angle, 0, 1, 0);
+    glTranslatef(0.8f, 0, 0);            // Move out
+    glRotatef(15.0f, 0, 0, 1);           // Tilt outward
+    glRotatef(rand() % 45, 0, 1, 0);     // Random twist
+    float scale = 0.5f + (i % 3) * 0.2f; // Varied sizes
+
+    glScalef(scale, scale * 1.5f, scale);
+    glRotatef(-90, 1, 0, 0); // Upright
+
+    // Small crystal shard
+    glutSolidCone(0.5f, 3.0f, 5, 1);
+
     glPopMatrix();
   }
 
-  // Center column
-  glRotatef(-90, 1, 0, 0);
-  gluCylinder(quad, 0.8f, 0.5f, 5, 6, 1);
+  // 3. Inner Glow (Core)
+  glDisable(GL_LIGHTING);
+  glColor4f(0.8f, 0.9f, 1.0f, 0.9f); // Bright core
+  glPushMatrix();
+  glScalef(0.4f, 4.0f, 0.4f);
+  glutSolidSphere(1.0f, 8, 8);
+  glPopMatrix();
+  glEnable(GL_LIGHTING);
 
-  gluDeleteQuadric(quad);
+  // Reset material defaults
+  glMaterialf(GL_FRONT, GL_SHININESS, 0.0f);
+  glDisable(GL_BLEND);
   glPopMatrix();
 }
 
@@ -1885,6 +1987,8 @@ void IceLevel::render() {
   for (auto obs : obstacles) {
     if (obs->type == ICE_PILLAR) {
       renderIcePillar(obs->x, obs->y, obs->z);
+    } else if (obs->type == CRYSTAL) {
+      renderCrystal(obs->x, obs->y, obs->z);
     } else if (obs->type == CHRISTMAS_TREE) {
       glPushMatrix();
       glTranslatef(obs->x, obs->y, obs->z);

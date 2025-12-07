@@ -79,7 +79,8 @@ enum ObstacleType {
   PYRAMID,
   SPHINX,
   CHRISTMAS_TREE,
-  PILLAR_ASSET // NEW for model-based pillars
+  PILLAR_ASSET, // NEW for model-based pillars
+  CRYSTAL       // NEW for glowing crystals
 };
 
 // ============================================================================
