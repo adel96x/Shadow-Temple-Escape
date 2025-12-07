@@ -79,8 +79,6 @@ Level::~Level() {
     delete groundModel;
   if (cactusModel)
     delete cactusModel;
-  if (pyramidModel)
-    delete pyramidModel;
 
   // Static models are not deleted here
 }
@@ -117,7 +115,6 @@ void Level::loadCommonAssets() {
   rockModel = new Model();
   groundModel = new Model();
   cactusModel = new Model();
-  pyramidModel = new Model();
 
   treeModel->load("assets/tree.obj");
   if (!rockModel->load("assets/rock.obj")) {
@@ -127,7 +124,6 @@ void Level::loadCommonAssets() {
     printf("Failed to load ground model\n");
   }
   cactusModel->load("assets/cactus.obj");
-  pyramidModel->load("assets/pyramid.obj");
 
   // Load textures
   wallTexture = loadBMP("assets/wall.bmp");
@@ -255,7 +251,7 @@ void DesertLevel::init(Player *p) {
   levelTimer = maxTime; // Reset timer
 
   // Setup lighting
-  sunLight.position = {0, 50, 0, 1};
+  sunLight.position = {0, 100, -80, 1}; // High up and visible
   sunLight.ambient = {0.5f, 0.5f, 0.5f, 1.0f};
   sunLight.diffuse = {1.0f, 0.9f, 0.8f, 1.0f}; // Warm sunlight
   sunLight.specular = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -335,6 +331,22 @@ void DesertLevel::spawnObstacles() {
   obstacles.push_back(new Obstacle(-8, 0, -8, 2, 6, 2, PILLAR));
   obstacles.push_back(new Obstacle(15, 0, -5, 2, 6, 2, PILLAR));
   obstacles.push_back(new Obstacle(-12, 0, 12, 2, 6, 2, PILLAR));
+  // Additional Pillars for grand entrance look
+  obstacles.push_back(new Obstacle(8, 0, -30, 2, 6, 2, PILLAR));
+  obstacles.push_back(new Obstacle(-8, 0, -30, 2, 6, 2, PILLAR));
+  obstacles.push_back(new Obstacle(8, 0, -20, 2, 6, 2, PILLAR));
+  obstacles.push_back(new Obstacle(-8, 0, -20, 2, 6, 2, PILLAR));
+
+  // ASSET PILLARS - Using the loaded model (different look)
+  // Repositioned to avoid overlap with existing objects
+  obstacles.push_back(
+      new Obstacle(40, 0, 10, 3, 6, 3, PILLAR_ASSET)); // Far Left
+  obstacles.push_back(
+      new Obstacle(-35, 0, -10, 3, 6, 3, PILLAR_ASSET)); // Far Right
+  obstacles.push_back(
+      new Obstacle(10, 0, -42, 3, 6, 3, PILLAR_ASSET)); // Near Gate Left
+  obstacles.push_back(
+      new Obstacle(-10, 0, -42, 3, 6, 3, PILLAR_ASSET)); // Near Gate Right
 
   // Palm trees
   obstacles.push_back(new Obstacle(30, 0, 10, 1.5f, 8, 1.5f, TREE));
@@ -347,12 +359,21 @@ void DesertLevel::spawnObstacles() {
   obstacles.push_back(new Obstacle(-30, 0, -5, 1, 4, 1, CACTUS));
 
   // Small realistic pyramids with SOLID collision - player CANNOT pass through
+  // Increased sizes and count as requested
   obstacles.push_back(
-      new Obstacle(-30, 0, 30, 6, 5, 6, PYRAMID)); // Small pyramid
+      new Obstacle(-30, 0, 30, 12, 10, 12, PYRAMID)); // Large pyramid
   obstacles.push_back(
-      new Obstacle(35, 0, -30, 7, 6, 7, PYRAMID)); // Medium pyramid
+      new Obstacle(35, 0, -30, 15, 12, 15, PYRAMID)); // Huge pyramid
   obstacles.push_back(
-      new Obstacle(15, 0, 25, 5, 4, 5, PYRAMID)); // Tiny pyramid
+      new Obstacle(15, 0, 25, 10, 8, 10, PYRAMID)); // Medium pyramid
+  obstacles.push_back(
+      new Obstacle(-20, 0, -25, 14, 11, 14, PYRAMID)); // New Large pyramid
+  obstacles.push_back(
+      new Obstacle(30, 0, 35, 18, 14, 18,
+                   PYRAMID)); // Moved from (5,0,-35) to avoid Portal overlap
+  obstacles.push_back(
+      new Obstacle(-40, 0, 0, 10, 8, 10, PYRAMID)); // New Medium pyramid
+
   // Add walls as obstacles for collision
   float wallSize = 45.0f;
   float wallThickness = 2.0f;
@@ -427,6 +448,18 @@ void DesertLevel::update(float deltaTime) {
   // Box collision for WALL, PILLAR, ROCK, PYRAMID (SOLID - cannot pass
   // through)
   for (auto obs : obstacles) {
+    if (obs->type == WALL || obs->type == PILLAR || obs->type == ROCK ||
+        obs->type == PYRAMID || obs->type == PILLAR_ASSET) {
+      // Use box collision
+      player->resolveCollisionWithBox(obs->x, obs->z, obs->width, obs->depth);
+    } else if (obs->type == TREE || obs->type == CACTUS) {
+      // Use cylinder/radius collision
+      // Approximate radius from width/depth
+      float radius = (obs->width + obs->depth) / 4.0f; // Average half-dimension
+      if (radius < 0.5f)
+        radius = 0.5f; // Minimum radius
+      player->resolveCollision(obs->x, obs->z, radius);
+    }
   }
 
   // Activate portal when all orbs collected
@@ -594,6 +627,10 @@ void DesertLevel::render() {
   glLightfv(GL_LIGHT0, GL_DIFFUSE, sunLight.diffuse.data());
   glLightfv(GL_LIGHT0, GL_SPECULAR, sunLight.specular.data());
 
+  // Ensure transparency is disabled by default for solid objects
+  glDisable(GL_BLEND);
+  glDepthMask(GL_TRUE);
+
   renderDesertEnvironment();
 
   // Render orbs
@@ -614,7 +651,24 @@ void DesertLevel::render() {
   for (auto obs : obstacles) {
     if (obs->type == PILLAR)
       renderPillar(obs->x, obs->y, obs->z);
-    else if (obs->type == TREE)
+    else if (obs->type == PILLAR_ASSET) {
+      // Render asset pillar inline
+      glPushMatrix();
+      glTranslatef(obs->x, obs->y, obs->z);
+      if (pillarModel && pillarModel->getWidth() > 0) {
+        glColor3f(0.7f, 0.6f, 0.5f);
+        glScalef(0.2f, 0.2f, 0.2f); // Reduced scale from 0.3 to 0.2
+        glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+        glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
+        pillarModel->render();
+      } else {
+        // Fallback
+        glColor3f(0.5f, 0.5f, 0.5f);
+        glScalef(1, 3, 1);
+        glutSolidCube(2.0f);
+      }
+      glPopMatrix();
+    } else if (obs->type == TREE)
       renderPalmTree(obs->x, obs->y, obs->z);
     else if (obs->type == ROCK)
       renderRock(obs->x, obs->y, obs->z);
@@ -710,28 +764,50 @@ void DesertLevel::renderDesertEnvironment() {
 }
 
 void DesertLevel::renderPillar(float x, float y, float z) {
-  glColor3f(0.7f, 0.6f, 0.5f);
   glPushMatrix();
   glTranslatef(x, y, z);
 
-  // Use loaded model if available
-  if (pillarModel && pillarModel->getWidth() > 0) {
-    glScalef(0.3f, 0.3f, 0.3f); // Adjust scale as needed
-    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-    glRotatef(180.0f, 0.0f, 0.0f, 1.0f);
+  // Professional Manual OpenGL Pillar Implementation
+  // Base
+  glColor3f(0.8f, 0.7f, 0.6f); // Sandstone light
+  glPushMatrix();
+  glScalef(1.2f, 0.5f, 1.2f);
+  glutSolidCube(2.0f);
+  glPopMatrix();
 
-    pillarModel->render();
+  // Shaft (Cylinder)
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, desertWallTexture.id); // Reuse wall texture
+  glColor3f(1.0f, 1.0f, 1.0f);
 
-  } else {
-    // Fallback rendering
-    glTranslatef(0, 3, 0);
-    glScalef(1, 3, 1);
-    glutSolidCube(2.0f);
+  GLUquadric *quad = gluNewQuadric();
+  gluQuadricTexture(quad, GL_TRUE); // Enable texture coords
 
-    glTranslatef(0, 1.1f, 0);
-    glScalef(1.3f, 0.3f, 1.3f);
-    glutSolidCube(2.0f);
-  }
+  glPushMatrix();
+  glTranslatef(0, 0.5f, 0);            // Start on top of base
+  glRotatef(-90.0f, 1.0f, 0.0f, 0.0f); // Upright
+  gluCylinder(quad, 0.8f, 0.8f, 5.0f, 16, 1);
+  glPopMatrix();
+
+  gluDeleteQuadric(quad);
+  glDisable(GL_TEXTURE_2D);
+
+  // Capital (Top) - Simple flared block
+  glColor3f(0.85f, 0.75f, 0.65f);
+  glPushMatrix();
+  glTranslatef(0, 5.5f, 0); // Top of shaft
+  glScalef(1.4f, 0.6f, 1.4f);
+  glutSolidCube(2.0f);
+  glPopMatrix();
+
+  // Gold Trim on Capital
+  glColor3f(1.0f, 0.84f, 0.0f); // Gold
+  glPushMatrix();
+  glTranslatef(0, 5.8f, 0);
+  glScalef(1.5f, 0.1f, 1.5f);
+  glutSolidCube(2.0f);
+  glPopMatrix();
+
   glPopMatrix();
 }
 
@@ -769,16 +845,17 @@ void DesertLevel::renderCactus(float x, float y, float z) {
   glTranslatef(x, y, z);
 
   if (cactusModel && cactusModel->getWidth() > 0) {
-
     // Rotate cactus upright (90 degrees anticlockwise)
-    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f); // <<< rotation added here
+    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
 
     // Your size scale
     glScalef(0.1f, 0.1f, 0.1f);
 
+    // Green color - SOLID (no transparency)
+    glColor3f(0.2f, 0.6f, 0.2f);
     cactusModel->render();
   } else {
-    // Fallback cactus cube
+    // Fallback cactus cube - SOLID
     glColor3f(0.2f, 0.6f, 0.2f);
     glScalef(0.5f, 2.0f, 0.5f);
     glutSolidCube(1.0f);
@@ -792,25 +869,82 @@ void DesertLevel::renderPyramid(float x, float y, float z, float baseSize,
   glPushMatrix();
   glTranslatef(x, y, z);
 
-  if (pyramidModel && pyramidModel->getWidth() > 0) {
-    // Scale to match the realistic size parameters
-    float scale = baseSize / 10.0f; // Original pyramid model is size 10
-    glScalef(scale, scale * height / 8.0f, scale);
+  // Professional Manual OpenGL Pyramid Implementation
+  float halfSize = baseSize / 2.0f;
 
-    // Realistic sandstone color with slight variation
-    glColor3f(0.87f, 0.72f, 0.53f); // Warm sandstone
-    pyramidModel->render();
-  } else {
-    // Fallback rendering with realistic Egyptian pyramid color
-    glColor3f(0.87f, 0.72f, 0.53f); // Warm sandstone color
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, desertWallTexture.id); // Re-use wall texture
 
-    // Enable lighting for better appearance
-    glEnable(GL_LIGHTING);
+  glColor3f(1.0f, 1.0f, 1.0f); // White to apply texture
 
-    // Render as cone (pyramid approximation)
-    glRotatef(-90, 1, 0, 0);
-    glutSolidCone(baseSize / 2.0f, height, 4, 1);
-  }
+  glBegin(GL_TRIANGLES);
+
+  // Front Face
+  glNormal3f(0.0f, 0.5f, 1.0f);
+  glTexCoord2f(0.0f, 0.0f);
+  glVertex3f(-halfSize, 0.0f, halfSize);
+  glTexCoord2f(1.0f, 0.0f);
+  glVertex3f(halfSize, 0.0f, halfSize);
+  glTexCoord2f(0.5f, 1.0f);
+  glVertex3f(0.0f, height, 0.0f);
+
+  // Right Face
+  glNormal3f(1.0f, 0.5f, 0.0f);
+  glTexCoord2f(0.0f, 0.0f);
+  glVertex3f(halfSize, 0.0f, halfSize);
+  glTexCoord2f(1.0f, 0.0f);
+  glVertex3f(halfSize, 0.0f, -halfSize);
+  glTexCoord2f(0.5f, 1.0f);
+  glVertex3f(0.0f, height, 0.0f);
+
+  // Back Face
+  glNormal3f(0.0f, 0.5f, -1.0f);
+  glTexCoord2f(0.0f, 0.0f);
+  glVertex3f(halfSize, 0.0f, -halfSize);
+  glTexCoord2f(1.0f, 0.0f);
+  glVertex3f(-halfSize, 0.0f, -halfSize);
+  glTexCoord2f(0.5f, 1.0f);
+  glVertex3f(0.0f, height, 0.0f);
+
+  // Left Face
+  glNormal3f(-1.0f, 0.5f, 0.0f);
+  glTexCoord2f(0.0f, 0.0f);
+  glVertex3f(-halfSize, 0.0f, -halfSize);
+  glTexCoord2f(1.0f, 0.0f);
+  glVertex3f(-halfSize, 0.0f, halfSize);
+  glTexCoord2f(0.5f, 1.0f);
+  glVertex3f(0.0f, height, 0.0f);
+
+  glEnd();
+
+  // Bottom Face (Square)
+  glBegin(GL_QUADS);
+  glNormal3f(0.0f, -1.0f, 0.0f);
+  glTexCoord2f(0.0f, 0.0f);
+  glVertex3f(-halfSize, 0.0f, halfSize);
+  glTexCoord2f(1.0f, 0.0f);
+  glVertex3f(-halfSize, 0.0f, -halfSize);
+  glTexCoord2f(1.0f, 1.0f);
+  glVertex3f(halfSize, 0.0f, -halfSize);
+  glTexCoord2f(0.0f, 1.0f);
+  glVertex3f(halfSize, 0.0f, halfSize);
+  glEnd();
+
+  // Capstone (Gold)
+  glDisable(GL_TEXTURE_2D);
+  glColor3f(1.0f, 0.84f, 0.0f); // Gold
+  glPushMatrix();
+  glTranslatef(0, height - 0.5f, 0);
+  glScalef(0.1f, 0.1f, 0.1f);
+  // Simple diamond shape for capstone
+  glBegin(GL_TRIANGLES);
+  // (Simplified mini pyramid logic or just a small cube rotated)
+  glEnd();
+  glutSolidOctahedron(); // Easy professional capstone shape
+  glPopMatrix();
+
+  glEnable(GL_TEXTURE_2D);
+
   glPopMatrix();
 }
 
@@ -1179,6 +1313,20 @@ void IceLevel::update(float deltaTime) {
   for (auto obs : obstacles) {
     float obsRadius = obs->width / 2.0f;
     if (player->checkCollision(obs->x, obs->z, obsRadius)) {
+      // DAMAGE LOGIC FOR SNOWMEN (ROCKS)
+      if (obs->type == ROCK && player->canTakeDamage()) {
+        player->takeDamage(10);
+        // Knockback logic could be added here similar to enemies
+        float dx = obs->x - player->getX();
+        float dz = obs->z - player->getZ();
+        // Simple push back
+        if (abs(dx) > 0.1f || abs(dz) > 0.1f) {
+          // Basic push away not implemented here, but damage is key request
+        }
+        extern Camera *camera;
+        if (camera)
+          camera->triggerShake(0.3f, 0.2f);
+      }
       player->resolveCollision(obs->x, obs->z, obsRadius);
     }
   }

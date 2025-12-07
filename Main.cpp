@@ -13,6 +13,7 @@
 #include <GL/glut.h>
 #endif
 
+#include <csignal> // Added for signal handling
 #include <cstdlib>
 #include <ctime>
 
@@ -73,6 +74,9 @@ void initOpenGL() {
 // Cleanup function to stop background music on exit
 void cleanupMusic() {
 #ifdef __APPLE__
+  // Kill the background shell loop that plays the music
+  system("pkill -f 'way-of-egypt' 2>/dev/null");
+  // Also kill any active afplay instances just in case
   system("killall afplay 2>/dev/null");
 #endif
 }
@@ -86,6 +90,7 @@ void startGame() {
 
   // Start background music (continuous loop with low volume)
 #ifdef __APPLE__
+  system("pkill -f 'way-of-egypt' 2>/dev/null"); // Clean up any old loops first
   system("killall afplay 2>/dev/null");
   system("(while true; do afplay assets/way-of-egypt-320819.mp3 -v 0.1; sleep "
          "0.1; "
@@ -646,6 +651,12 @@ int main(int argc, char **argv) {
   glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
   glutInitWindowPosition(100, 100);
   glutCreateWindow("Shadow Temple Escape");
+
+  // Handle Ctrl+C to ensure music stops
+  signal(SIGINT, [](int signum) {
+    cleanupMusic();
+    exit(0);
+  });
 
   initOpenGL();
 

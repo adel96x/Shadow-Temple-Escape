@@ -78,7 +78,8 @@ enum ObstacleType {
   CACTUS,
   PYRAMID,
   SPHINX,
-  CHRISTMAS_TREE
+  CHRISTMAS_TREE,
+  PILLAR_ASSET // NEW for model-based pillars
 };
 
 // ============================================================================

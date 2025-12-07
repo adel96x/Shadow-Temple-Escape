@@ -129,13 +129,13 @@ protected:
   // Resources
   Texture wallTexture;
   Texture groundTexture;
-  Model *sphinxModel;
+  // Sphinx removed
   static Model *pillarModel;
   Model *treeModel;
   Model *rockModel;
   Model *groundModel;
-  Model *cactusModel;  // NEW
-  Model *pyramidModel; // NEW
+  Model *cactusModel; // NEW
+  // pyramidModel removed
   static Model *snowmanModel;
   static Model *christmasTreeModel;
   static Model *snakeModel;
@@ -217,7 +217,6 @@ private:
   void renderCactus(float x, float y, float z); // NEW
   void renderPyramid(float x, float y, float z, float baseSize,
                      float height); // NEW
-  void renderSphinx(float x, float y, float z, float scale = 1.0f);
   void renderRock(float x, float y, float z);
   void renderOrb(Collectible *orb);
   void renderChest(Chest *chest);
